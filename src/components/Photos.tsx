@@ -3,13 +3,30 @@ import { useEffect, useRef, useState } from 'react'
 import { db, type PhotoRow } from '../db'
 import { compressImage } from '../image'
 import { addPhoto, deletePhoto } from '../repo'
+import { useSyncState } from '../sync'
 
 /** Affiche une photo : locale si on l'a, sinon téléchargée une fois puis gardée sur l'appareil. */
 function usePhotoUrl(photo: PhotoRow): { url: string | null; failed: boolean } {
   const [url, setUrl] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
+  const [tick, setTick] = useState(0)
+  const { lastSync } = useSyncState()
+
+  // Téléchargement échoué (hors connexion, ou image pas encore envoyée par l'autre appareil) : on réessaie
+  // à chaque synchro réussie et au retour du réseau.
+  useEffect(() => {
+    if (failed) setTick((t) => t + 1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastSync])
+  useEffect(() => {
+    const retry = () => setTick((t) => t + 1)
+    window.addEventListener('online', retry)
+    return () => window.removeEventListener('online', retry)
+  }, [])
+
   useEffect(() => {
     let revoked = false
+    setFailed(false)
     let objectUrl: string | null = null
     const show = (b: Blob) => {
       if (revoked) return
@@ -31,7 +48,8 @@ function usePhotoUrl(photo: PhotoRow): { url: string | null; failed: boolean } {
       revoked = true
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
-  }, [photo.id, photo.blob])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photo.id, photo.blob, tick])
   return { url, failed }
 }
 
