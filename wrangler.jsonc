@@ -20,7 +20,7 @@
     }
   ],
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "ricci-garage-photos" }],
-  // Rappels par email : vérification toutes les 15 minutes.
-  "triggers": { "crons": ["*/15 * * * *"] },
+  // Rappels par email (toutes les 15 min) et synchronisation Google Agenda (décalée de 5 min).
+  "triggers": { "crons": ["*/15 * * * *", "5,20,35,50 * * * *"] },
   "observability": { "enabled": true }
 }

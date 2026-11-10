@@ -4,11 +4,12 @@ import { serverAccepts } from '../shared/sync'
 import type { RecordKind, SyncChange, SyncRequest, SyncResponse } from '../shared/types'
 import { loginPage } from './loginPage'
 import { sendMail, type MailEnv } from './mail'
+import { getGcalStatus, parseServiceAccount, runGcalSync, type GcalEnv } from './gcal'
 import { getStatus, loadAll, mailConfigured, runReminders } from './reminders'
 import { sniffImage } from './photos'
 import { SESSION_COOKIE, SESSION_MAX_AGE, createSession, safeEqual, verifySession } from './auth'
 
-interface Env extends Partial<MailEnv> {
+interface Env extends Partial<MailEnv>, Partial<Omit<GcalEnv, 'DB'>> {
   DB: D1Database
   /** Bucket R2 des photos (images compressées, ≤ 1 Mo). */
   PHOTOS: R2Bucket
@@ -28,6 +29,9 @@ const MAX_CHANGES_PER_REQUEST = 200
 const PAGE_SIZE = 500
 const MAX_ATTEMPTS = 5
 const WINDOW_MS = 15 * 60 * 1000
+
+/** Même valeur que dans wrangler.jsonc : synchronisation Google Agenda, 5 minutes après chaque vérification des rappels. */
+const GCAL_CRON = '5,20,35,50 * * * *'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -187,6 +191,19 @@ app.get('/api/mail/status', async (c) => {
   return c.json({ configured: mailConfigured(c.env), lastRun: await getStatus(c.env.DB), recent: recent.results })
 })
 
+// Google Agenda (sens unique : application → Google).
+app.get('/api/gcal/status', async (c) => {
+  const sa = parseServiceAccount(c.env.GOOGLE_SA_JSON)
+  const { settings } = await loadAll(c.env.DB)
+  const pending = await c.env.DB.prepare('SELECT COUNT(*) AS n FROM gcal_sync').first<{ n: number }>()
+  return c.json({ configured: !!sa, serviceAccountEmail: sa?.client_email ?? null, calendarId: settings.googleCalendarId, synced: pending?.n ?? 0, lastRun: await getGcalStatus(c.env.DB) })
+})
+
+app.post('/api/gcal/sync', async (c) => {
+  const status = await runGcalSync(c.env as GcalEnv)
+  return c.json({ ok: !!status && !status.error, status })
+})
+
 // Email de test vers l'adresse du récapitulatif : sert à vérifier la configuration SMTP (Gmail).
 app.post('/api/mail/test', async (c) => {
   if (!mailConfigured(c.env)) return c.json({ error: 'smtp_not_configured' }, 503)
@@ -251,7 +268,8 @@ app.all('*', async (c) => {
 export default {
   fetch: app.fetch,
   // Déclenché par le cron de wrangler.jsonc (toutes les 15 minutes).
-  scheduled(_controller, env, ctx) {
-    ctx.waitUntil(runReminders(env))
+  scheduled(controller, env, ctx) {
+    // Deux déclencheurs décalés (wrangler.jsonc) : chacun dispose de son propre budget de sous-requêtes.
+    ctx.waitUntil(controller.cron === GCAL_CRON ? runGcalSync(env as GcalEnv) : runReminders(env))
   },
 } satisfies ExportedHandler<Env>

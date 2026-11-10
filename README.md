@@ -1,6 +1,6 @@
 # Ricci Garage
 
-Application web (PWA) de suivi pour un garage : clients, véhicules (plaques FR/LU), interventions chiffrées avec photos, agenda et rappels par email, recherche globale.
+Application web (PWA) de suivi pour un garage : clients, véhicules (plaques FR/LU), interventions chiffrées avec photos, agenda et rappels par email, synchronisation Google Agenda, recherche globale.
 Fonctionne **hors connexion** : tout s'écrit d'abord sur l'appareil, puis se synchronise.
 Cahier des charges : [`docs/cahier-des-charges.md`](docs/cahier-des-charges.md).
 
@@ -40,6 +40,30 @@ npx wrangler secret put SMTP_PASSWORD    # le mot de passe d'application (16 car
 3. Dans l'application : Réglages → « Envoyer un email de test ». Tant que ce test n'a pas réussi, aucun rappel ne part (l'état d'envoi est affiché dans Réglages).
 
 Si le test échoue avec Gmail, c'est la seule partie non vérifiable hors ligne (voir « Limites ») : le message d'erreur s'affiche dans Réglages.
+
+## Google Agenda (application → Google, sens unique)
+
+Les rendez-vous, interventions et échéances datées sont envoyés dans un agenda Google : ton père les voit dans l'application Google Agenda de son téléphone. Un cron (toutes les 15 min, décalé de 5 min par rapport aux rappels) n'envoie que ce qui a changé ; annuler/archiver un élément le retire de Google. **Rien n'est jamais lu depuis Google.**
+
+**Alertes sur le téléphone** : l'application écrit dans l'agenda avec le compte de service, pas avec le compte de ton père ; or, dans Google, un rappel appartient à l'utilisateur qui le configure. Les événements ne portent donc aucun rappel : ton père règle les alertes dans **son** Google Agenda (*Paramètres de l'agenda* → *Notifications des événements* et *Notifications des événements toute la journée*). Les rappels par email de l'application, eux, sont indépendants et réglables dans les Réglages.
+
+Contenu des événements : client, téléphone, véhicule, motif/travaux, notes. **Jamais de prix ni de pièces.** Ces données personnelles sont donc aussi stockées chez Google : à ne faire que si c'est acceptable pour les clients.
+
+Mise en place (une fois) :
+
+1. [console.cloud.google.com](https://console.cloud.google.com) → créer un projet → *API et services* → *Bibliothèque* → activer **Google Calendar API**.
+2. *IAM et administration* → *Comptes de service* → créer un compte (aucun rôle nécessaire) → onglet *Clés* → *Ajouter une clé* → **JSON** : un fichier est téléchargé. C'est un secret : ne jamais le commiter ni le partager.
+3. Dans Google Agenda (web) : *Paramètres de l'agenda* (idéalement un agenda dédié « Ricci Garage ») → *Partager avec des personnes ou des groupes* → ajouter l'adresse `client_email` du fichier JSON avec la permission **« Apporter des modifications aux événements »**.
+4. Même page → *Intégrer l'agenda* → copier l'**ID de l'agenda**.
+5. Enregistrer la clé comme secret Cloudflare, puis supprimer le fichier :
+
+```bash
+npx wrangler secret put GOOGLE_SA_JSON < chemin/vers/cle-du-compte-de-service.json
+```
+
+6. Dans l'application : Réglages → *Identifiant de l'agenda Google* → Enregistrer → *Synchroniser maintenant*. L'état et les erreurs (agenda non partagé, identifiant faux…) s'affichent dans Réglages.
+
+Notes : un événement modifié ou supprimé à la main dans Google n'est réécrit que si l'élément correspondant change dans l'application. Changer l'identifiant d'agenda recrée tout dans le nouvel agenda (les anciens événements restent dans l'ancien). Les éléments de plus de 30 jours ne sont plus touchés. Les comptes Google rattachés à une organisation peuvent interdire la création de clés de compte de service (stratégie `iam.disableServiceAccountKeyCreation`).
 
 ## Développement local
 
@@ -84,7 +108,8 @@ Configuration à faire **une seule fois** :
 
 - **Envoi Gmail non testé de bout en bout** : Nodemailer a été testé sous `wrangler dev` (runtime Workers) contre un serveur SMTP local sans TLS, avec authentification : l'envoi fonctionne. La connexion TLS vers Gmail (port 465) n'a pas pu être vérifiée hors ligne. Le bouton « Envoyer un email de test » sert à le valider après déploiement. En cas d'échec, solutions de repli : client SMTP minimal sur `cloudflare:sockets`, ou API Gmail en HTTPS.
 - Pas de rappel par email pour une échéance **au kilométrage** (le kilométrage n'est connu que quand une intervention le relève) : elle apparaît dans « À venir » et dans le récapitulatif quotidien quand il reste moins de 1 000 km.
-- Pas encore de synchronisation Google Calendar (jalon 4).
+- **Google Agenda non testé contre le vrai Google** : testé avec un faux serveur Google local (jeton JWT RS256 vérifié, création / mise à jour / suppression, erreurs 403 et 404). Le bouton « Synchroniser maintenant » et les messages d'erreur des Réglages permettent de valider la configuration réelle.
+- Pas de synchronisation dans l'autre sens (Google → application).
 
 ## Sauvegardes
 
