@@ -2,13 +2,17 @@ import { Hono } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { serverAccepts } from '../shared/sync'
 import type { RecordKind, SyncChange, SyncRequest, SyncResponse } from '../shared/types'
+import { loginPage } from './loginPage'
+import { sendMail, type MailEnv } from './mail'
 import { sniffImage } from './photos'
 import { SESSION_COOKIE, SESSION_MAX_AGE, createSession, safeEqual, verifySession } from './auth'
 
-interface Env {
+interface Env extends Partial<MailEnv> {
   DB: D1Database
   /** Bucket R2 des photos (images compressées, ≤ 1 Mo). */
   PHOTOS: R2Bucket
+  /** Fichiers de l'application (build Vite). Jamais servis sans session valide. */
+  ASSETS: Fetcher
   /** Mot de passe de l'application (secret Cloudflare). */
   APP_PASSWORD: string
   /** Clé de signature des sessions (secret Cloudflare, longue chaîne aléatoire). */
@@ -176,6 +180,56 @@ app.get('/api/photos/:id', async (c) => {
   })
 })
 
-app.notFound((c) => c.json({ error: 'not_found' }, 404))
+app.post('/api/mail/test', async (c) => {
+  if (!c.env.SMTP_USER || !c.env.SMTP_PASSWORD) return c.json({ error: 'smtp_not_configured' }, 503)
+  try {
+    await sendMail(c.env as MailEnv, { fromName: 'Test', to: 'dest@example.com', subject: 'Test', text: 'Bonjour', html: '<p>Bonjour</p>' })
+    return c.json({ ok: true })
+  } catch (e) {
+    return c.json({ error: 'send_failed', detail: e instanceof Error ? e.message : String(e) }, 502)
+  }
+})
+
+app.notFound(async (c) => c.json({ error: 'not_found' }, 404))
+
+// Une route d'API inconnue répond 404 en JSON (et ne retombe jamais sur les fichiers de l'application).
+app.all('/api/*', (c) => c.json({ error: 'not_found' }, 404))
+
+/** Seules exceptions publiques : les icônes (un « RG » sur fond bleu), que le navigateur réclame sans cookie pour installer l'appli. */
+const PUBLIC_FILES = new Set(['/icon-192.png', '/icon-512.png'])
+
+/**
+ * Tout le reste (pages, scripts, images, manifeste…) : l'application n'est livrée qu'avec une session valide.
+ * Sans session, la seule réponse possible est la page de code (ou une 401 pour les autres ressources).
+ */
+app.all('*', async (c) => {
+  if (c.req.method !== 'GET' && c.req.method !== 'HEAD') return c.text('Method Not Allowed', 405)
+  if (PUBLIC_FILES.has(new URL(c.req.url).pathname) || (await verifySession(c.env.SESSION_SECRET, getCookie(c, SESSION_COOKIE)))) {
+    const res = await c.env.ASSETS.fetch(c.req.raw)
+    const out = new Response(res.body, res)
+    out.headers.set('X-Content-Type-Options', 'nosniff')
+    out.headers.set('Referrer-Policy', 'no-referrer')
+    out.headers.set('X-Robots-Tag', 'noindex, nofollow')
+    return out
+  }
+  const accept = c.req.header('accept') ?? ''
+  const headers = {
+    'Cache-Control': 'no-store',
+    'X-Robots-Tag': 'noindex, nofollow',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'no-referrer',
+    'X-Frame-Options': 'DENY',
+  }
+  if (!accept.includes('text/html')) return new Response('Unauthorized', { status: 401, headers })
+  const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))))
+  return new Response(loginPage(nonce), {
+    status: 401,
+    headers: {
+      ...headers,
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Security-Policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`,
+    },
+  })
+})
 
 export default app

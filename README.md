@@ -11,6 +11,15 @@ Cahier des charges : [`docs/cahier-des-charges.md`](docs/cahier-des-charges.md).
 - `shared/` : règles communes front/serveur (plaques, téléphone, recherche, fusion « le plus récent gagne »).
 - `migrations/` : schéma D1.
 
+## Sécurité : rien sans le code
+
+- Le Worker reçoit **toutes** les requêtes (`run_worker_first`). Sans session valide, il ne renvoie qu'une page de code (401) : ni l'application, ni les scripts, ni le manifeste, ni l'API, ni les données. Seules les deux icônes sont publiques (le navigateur les demande sans cookie pour installer l'application).
+- Le code est le secret Cloudflare `APP_PASSWORD`. Blocage après 5 essais ratés (15 min) ; cookie de session `HttpOnly`, 30 jours.
+- L'application fonctionnant hors connexion, elle **se verrouille aussi sur l'appareil** (écran de code à l'ouverture, puis après 15 min d'inactivité ou d'arrière-plan : `LOCK_AFTER_MS` dans `src/lock.ts`). Hors connexion, le code est vérifié localement grâce à une empreinte (PBKDF2, sel) mémorisée à la première connexion.
+- « Se déconnecter » (Réglages) efface cette empreinte : l'appareil exige alors une connexion en ligne.
+- Limites à connaître : les données de l'appareil restent dans le navigateur (non chiffrées) ; l'écran de code protège l'application, pas un examen technique du téléphone (garder un verrouillage d'écran). L'empreinte locale d'un code court se casse vite : **choisir une phrase de passe d'au moins 12 caractères**. Après un changement d'`APP_PASSWORD`, l'ancien code reste valable hors connexion sur les appareils déjà connectés jusqu'à leur prochaine connexion en ligne (ou « Se déconnecter »).
+- Quota : comme tout passe par le Worker, chaque fichier chargé compte dans les 100 000 requêtes/jour du forfait gratuit ; l'application étant mise en cache sur l'appareil, l'usage prévu en est très loin.
+
 ## Développement local
 
 ```bash

@@ -102,3 +102,9 @@ a { color: var(--primary); }
 .status.en_cours { background: var(--warn-bg); color: var(--warn); }
 .status.terminee { background: #e1f5ea; color: var(--ok); }
 @media (prefers-color-scheme: dark) { .status.terminee { background: #12301f; } }
+
+.lock { min-height: 100dvh; display: grid; place-items: center; padding: 16px; background: var(--bg); }
+.lock-card { width: 100%; max-width: 380px; display: grid; gap: 10px; text-align: center; }
+.lock-card h1 { margin: 0; }
+.lock-card .search { text-align: center; margin: 0; }
+.lock-icon { font-size: 3rem; }

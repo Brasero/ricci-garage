@@ -1,5 +1,7 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
+import { LockScreen } from './components/LockScreen'
+import { useLock } from './lock'
 import { ClientPage } from './pages/ClientPage'
 import { ClientsPage } from './pages/ClientsPage'
 import { HomePage } from './pages/HomePage'
@@ -12,6 +14,8 @@ import { VehiclePage } from './pages/VehiclePage'
 import { VehiclesPage } from './pages/VehiclesPage'
 
 export function App() {
+  // Verrouillé : on ne rend rien d'autre que l'écran de code (aucune donnée affichée ni requêtée).
+  if (useLock()) return <LockScreen />
   return (
     <BrowserRouter>
       <Routes>

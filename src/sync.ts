@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { deviceAccepts } from '../shared/sync'
 import type { RecordKind, SyncChange, SyncRequest, SyncResponse } from '../shared/types'
 import { db } from './db'
+import { clearVerifier, lockNow } from './lock'
 
 export type SyncStatus = 'idle' | 'syncing' | 'offline' | 'unauthorized' | 'error'
 export interface SyncState {
@@ -204,6 +205,8 @@ export async function login(password: string): Promise<'ok' | 'invalid' | 'locke
 }
 
 export async function logout(): Promise<void> {
+  clearVerifier() // cet appareil « oublie » le code : il faudra se reconnecter en ligne
+  lockNow()
   await fetch('/api/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => undefined)
   setState({ status: 'unauthorized' })
 }

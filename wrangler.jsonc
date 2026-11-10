@@ -6,8 +6,10 @@
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    // Le Worker reçoit TOUTES les requêtes : rien n'est servi sans session valide.
+    "run_worker_first": true
   },
   "d1_databases": [
     {

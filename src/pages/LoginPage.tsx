@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Field } from '../components/ui'
+import { createVerifier, storeVerifier } from '../lock'
 import { login } from '../sync'
 
 export function LoginPage() {
@@ -13,7 +14,10 @@ export function LoginPage() {
     setBusy(true)
     const r = await login(pwd)
     setBusy(false)
-    if (r === 'ok') nav('/', { replace: true })
+    if (r === 'ok') {
+      storeVerifier(await createVerifier(pwd))
+      nav('/', { replace: true })
+    }
     else setMsg({ invalid: 'Mot de passe incorrect.', locked: 'Trop d\'essais. Réessayez dans 15 minutes.', offline: 'Pas de connexion. Réessayez plus tard.' }[r])
   }
   return (
