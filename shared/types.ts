@@ -166,6 +166,8 @@ export interface Settings extends BaseRecord {
   delaisRdvMin: number[]
   /** Délais avant une échéance datée, en jours. */
   delaisEcheanceJours: number[]
+  /** Identifiant de l'agenda Google alimenté par l'application (vide = synchronisation désactivée). */
+  googleCalendarId: string
 }
 
 /** Format échangé avec le serveur. */

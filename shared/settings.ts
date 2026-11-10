@@ -21,6 +21,7 @@ export const DEFAULT_SETTINGS: Settings = {
   rappelsRdvPereActifs: true,
   delaisRdvMin: [1440, 60],
   delaisEcheanceJours: [30, 7],
+  googleCalendarId: '',
 }
 
 /** Complète des réglages partiels (ancienne version, champ manquant) avec les valeurs par défaut. */

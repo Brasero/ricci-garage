@@ -1,6 +1,6 @@
 import { computeMailJobs, type MailJob } from '../shared/reminders'
 import { withDefaults } from '../shared/settings'
-import type { Client, Echeance, RendezVous, Settings, Vehicle } from '../shared/types'
+import type { Client, Echeance, Intervention, RendezVous, Settings, Vehicle } from '../shared/types'
 import { sendMail, type MailEnv } from './mail'
 
 export interface RemindersEnv extends Partial<MailEnv> {
@@ -28,7 +28,7 @@ interface Row {
 
 export async function loadAll(db: D1Database) {
   const { results } = await db
-    .prepare("SELECT id, kind, data, updated_at, deleted_at FROM records WHERE kind IN ('client','vehicle','rdv','echeance','settings')")
+    .prepare("SELECT id, kind, data, updated_at, deleted_at FROM records WHERE kind IN ('client','vehicle','intervention','rdv','echeance','settings')")
     .all<Row>()
   const pick = <T>(kind: string): T[] =>
     results.filter((r) => r.kind === kind).map((r) => ({ ...(JSON.parse(r.data) as object), id: r.id, updatedAt: r.updated_at, deletedAt: r.deleted_at }) as T)
@@ -37,6 +37,7 @@ export async function loadAll(db: D1Database) {
     settings: withDefaults(settings && !settings.deletedAt ? settings : undefined),
     clients: pick<Client>('client'),
     vehicles: pick<Vehicle>('vehicle'),
+    interventions: pick<Intervention>('intervention'),
     rdvs: pick<RendezVous>('rdv'),
     echeances: pick<Echeance>('echeance'),
   }

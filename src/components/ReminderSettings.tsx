@@ -67,6 +67,67 @@ function Status() {
   )
 }
 
+interface GcalStatus {
+  configured: boolean
+  serviceAccountEmail: string | null
+  calendarId: string
+  synced: number
+  lastRun: { at: number; saved: number; removed: number; failed: number; remaining: number; error?: string } | null
+}
+
+function GoogleStatus() {
+  const [st, setSt] = useState<GcalStatus | 'offline' | null>(null)
+  const [busy, setBusy] = useState(false)
+  const load = () =>
+    fetch('/api/gcal/status')
+      .then((r) => (r.ok ? (r.json() as Promise<GcalStatus>) : Promise.reject(r.status)))
+      .then(setSt)
+      .catch(() => setSt('offline'))
+  useEffect(() => void load(), [])
+
+  async function syncNow() {
+    setBusy(true)
+    try {
+      await fetch('/api/gcal/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+    } finally {
+      setBusy(false)
+      void load()
+    }
+  }
+
+  return (
+    <>
+      <h3>Google Agenda (sens unique : application → Google)</h3>
+      {st === null && <p className="muted">Chargement…</p>}
+      {st === 'offline' && <p className="muted">Indisponible hors connexion.</p>}
+      {st && st !== 'offline' && (
+        <>
+          {!st.configured ? (
+            <p className="warn-text">Clé du compte de service absente sur le serveur : la synchronisation est inactive (voir le README, section Google Agenda).</p>
+          ) : (
+            <p>
+              ✓ Compte de service configuré. Partagez votre agenda Google avec <strong>{st.serviceAccountEmail}</strong> (permission « Apporter des modifications aux événements »).
+            </p>
+          )}
+          {st.configured && !st.calendarId && <p className="muted">Renseignez l'identifiant de l'agenda ci-dessus pour activer la synchronisation.</p>}
+          {st.lastRun && (
+            <p className="muted">
+              Dernière synchronisation : {new Date(st.lastRun.at).toLocaleString('fr-FR')} — {st.lastRun.saved} envoyé(s), {st.lastRun.removed} supprimé(s){st.lastRun.failed ? `, ${st.lastRun.failed} échec(s)` : ''}
+              {st.lastRun.remaining ? `, ${st.lastRun.remaining} restant(s) (prochain passage dans 15 min)` : ''}. {st.synced} élément(s) dans Google Agenda.
+              {st.lastRun.error && <span className="error"> {st.lastRun.error}</span>}
+            </p>
+          )}
+          <div className="actions">
+            <button type="button" className="btn" disabled={busy || !st.configured || !st.calendarId} onClick={() => void syncNow()}>
+              🔄 {busy ? 'Synchronisation…' : 'Synchroniser maintenant'}
+            </button>
+          </div>
+        </>
+      )}
+    </>
+  )
+}
+
 function Form({ initial }: { initial: Settings }) {
   const [f, setF] = useState(() => ({
     ...initial,
@@ -95,12 +156,12 @@ function Form({ initial }: { initial: Settings }) {
     await saveSettings({
       garageNom: f.garageNom.trim(), garageAdresse: f.garageAdresse.trim(), garageTelephone: f.garageTelephone.trim(), garageEmail: f.garageEmail.trim(), signature: f.signature.trim(),
       emailRecap: f.emailRecap.trim(), heureEnvoi: f.heureEnvoi, recapActif: f.recapActif, rappelsClientActifs: f.rappelsClientActifs, rappelsRdvPereActifs: f.rappelsRdvPereActifs,
-      delaisRdvMin: rdv!, delaisEcheanceJours: ech!,
+      delaisRdvMin: rdv!, delaisEcheanceJours: ech!, googleCalendarId: f.googleCalendarId.trim(),
     })
     setSaved(true)
   }
 
-  const text = (k: 'garageNom' | 'garageAdresse' | 'garageTelephone' | 'garageEmail' | 'signature' | 'emailRecap' | 'rdvH' | 'echJ') => (e: { target: { value: string } }) => set(k, e.target.value)
+  const text = (k: 'googleCalendarId' | 'garageNom' | 'garageAdresse' | 'garageTelephone' | 'garageEmail' | 'signature' | 'emailRecap' | 'rdvH' | 'echJ') => (e: { target: { value: string } }) => set(k, e.target.value)
   const check = (k: 'recapActif' | 'rappelsClientActifs' | 'rappelsRdvPereActifs', label: string) => (
     <label className="check"><input type="checkbox" checked={f[k]} onChange={(e) => set(k, e.target.checked)} />{label}</label>
   )
@@ -126,6 +187,10 @@ function Form({ initial }: { initial: Settings }) {
       </Field>
       <Field label="Rappels de rendez-vous : combien d'heures avant ?" error={errors.rdvH} hint="Par défaut 24, 1 (la veille et 1 h avant)"><input value={f.rdvH} onChange={text('rdvH')} inputMode="decimal" /></Field>
       <Field label="Rappels d'échéance : combien de jours avant ?" error={errors.echJ} hint="Par défaut 30, 7 ; 0 = le jour même"><input value={f.echJ} onChange={text('echJ')} inputMode="numeric" /></Field>
+      <h3>Google Agenda</h3>
+      <Field label="Identifiant de l'agenda Google" hint="Google Agenda → Paramètres de l'agenda → Intégrer l'agenda → ID de l'agenda (souvent l'adresse Gmail). Vide = désactivé">
+        <input value={f.googleCalendarId} onChange={text('googleCalendarId')} autoCapitalize="none" />
+      </Field>
       <button className="btn primary big" type="submit">Enregistrer les réglages</button>
       {saved && <p className="ok-msg" role="status">✓ Enregistré (appliqué à tous les appareils après synchronisation)</p>}
     </form>
@@ -142,6 +207,7 @@ export function ReminderSettings() {
       {/* Pas de `key` sur updatedAt : le formulaire ne doit pas se recréer (et perdre son message « Enregistré ») à chaque sauvegarde. */}
       <Form initial={s} />
       <Status />
+      <GoogleStatus />
     </>
   )
 }
