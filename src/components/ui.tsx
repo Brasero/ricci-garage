@@ -76,3 +76,15 @@ export function ClientPicker({ value, onChange, error }: { value: string; onChan
     </Field>
   )
 }
+
+export function StaleBanner({ onReload, onKeep }: { onReload: () => void; onKeep: () => void }) {
+  return (
+    <div className="warning" role="alert">
+      <strong>Cette fiche a été modifiée sur un autre appareil.</strong>
+      <div className="actions">
+        <button type="button" className="btn" onClick={onReload}>Voir la version à jour (perdre ma saisie)</button>
+        <button type="button" className="btn" onClick={onKeep}>Garder ma saisie (écrasera l'autre)</button>
+      </div>
+    </div>
+  )
+}

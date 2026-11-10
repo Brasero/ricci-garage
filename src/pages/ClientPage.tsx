@@ -4,7 +4,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { validateEmail, validatePhone } from '../../shared/phone'
 import { db, type Row } from '../db'
 import { archiveClient, findDuplicateClients, fullName, saveClient, type ClientInput } from '../repo'
-import { Field, VehicleCard } from '../components/ui'
+import { Field, StaleBanner, VehicleCard } from '../components/ui'
+import { useStaleGuard } from '../useStaleGuard'
 import type { Client } from '../../shared/types'
 
 export function ClientPage() {
@@ -16,14 +17,21 @@ export function ClientPage() {
   return <ClientForm key={loaded?.c?.id ?? 'new'} existing={loaded?.c} />
 }
 
+const toForm = (c?: Client): ClientInput => ({
+  nom: c?.nom ?? '',
+  prenom: c?.prenom ?? '',
+  telephone: c?.telephone ?? '',
+  email: c?.email ?? '',
+  notes: c?.notes ?? '',
+})
+
 function ClientForm({ existing }: { existing?: Row<Client> }) {
   const nav = useNavigate()
-  const [f, setF] = useState<ClientInput>({
-    nom: existing?.nom ?? '',
-    prenom: existing?.prenom ?? '',
-    telephone: existing?.telephone ?? '',
-    email: existing?.email ?? '',
-    notes: existing?.notes ?? '',
+  const [f, setF] = useState<ClientInput>(() => toForm(existing))
+  const guard = useStaleGuard(existing, (c) => {
+    setF(toForm(c))
+    setErrors({})
+    setDupes([])
   })
   const [errors, setErrors] = useState<Partial<Record<keyof ClientInput, string>>>({})
   const [dupes, setDupes] = useState<Row<Client>[]>([])
@@ -35,6 +43,7 @@ function ClientForm({ existing }: { existing?: Row<Client> }) {
   )
   const set = (k: keyof ClientInput) => (e: { target: { value: string } }) => {
     setF((p) => ({ ...p, [k]: e.target.value }))
+    guard.markTouched()
     setDupes([])
     setSaved(false)
   }
@@ -57,7 +66,10 @@ function ClientForm({ existing }: { existing?: Row<Client> }) {
       }
     }
     const id = await saveClient(f, existing)
-    if (existing) setSaved(true)
+    if (existing) {
+      guard.saved((await db.clients.get(id))!.updatedAt)
+      setSaved(true)
+    }
     else nav(`/clients/${id}`, { replace: true })
   }
 
@@ -81,6 +93,7 @@ function ClientForm({ existing }: { existing?: Row<Client> }) {
           {existing.email && <a className="btn" href={`mailto:${existing.email}`}>✉️ Écrire</a>}
         </div>
       )}
+      {guard.stale && <StaleBanner onReload={guard.reloadNow} onKeep={guard.keepMine} />}
       <form onSubmit={submit} noValidate className="form">
         <Field label="Nom *" error={errors.nom}>
           <input value={f.nom} onChange={set('nom')} autoComplete="family-name" autoFocus={!existing} />

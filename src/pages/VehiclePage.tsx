@@ -5,7 +5,8 @@ import { validatePlate, validateVin, type Country } from '../../shared/plate'
 import { MOTORISATIONS, type Motorisation, type Vehicle } from '../../shared/types'
 import { db, type Row } from '../db'
 import { fullName, findVehiclesByPlate, saveVehicle, setVehicleArchived, type VehicleInput } from '../repo'
-import { ClientPicker, Field, PlateBadge } from '../components/ui'
+import { ClientPicker, Field, PlateBadge, StaleBanner } from '../components/ui'
+import { useStaleGuard } from '../useStaleGuard'
 
 const BRANDS = ['Alfa Romeo', 'Audi', 'BMW', 'Citroën', 'Cupra', 'Dacia', 'DS', 'Fiat', 'Ford', 'Honda', 'Hyundai', 'Jeep', 'Kia', 'Land Rover', 'Mazda', 'Mercedes-Benz', 'Mini', 'Mitsubishi', 'Nissan', 'Opel', 'Peugeot', 'Porsche', 'Renault', 'Seat', 'Skoda', 'Smart', 'Suzuki', 'Tesla', 'Toyota', 'Volkswagen', 'Volvo']
 
@@ -17,23 +18,30 @@ export function VehiclePage() {
   return <VehicleForm key={loaded?.v?.id ?? 'new'} existing={loaded?.v} />
 }
 
+const toForm = (v: Vehicle | undefined, clientId: string): VehicleInput => ({
+  clientId: v?.clientId ?? clientId,
+  marque: v?.marque ?? '',
+  modele: v?.modele ?? '',
+  motorisation: v?.motorisation ?? 'essence',
+  motorisationDetail: v?.motorisationDetail ?? '',
+  country: v?.country ?? 'FR',
+  plate: v?.plate ?? '',
+  couleur: v?.couleur ?? '',
+  miseEnCirculation: v?.miseEnCirculation ?? '',
+  vin: v?.vin ?? '',
+  km: v?.km ?? null,
+  dernierCT: v?.dernierCT ?? '',
+  notes: v?.notes ?? '',
+})
+
 function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
   const nav = useNavigate()
   const [params] = useSearchParams()
-  const [f, setF] = useState<VehicleInput>({
-    clientId: existing?.clientId ?? params.get('client') ?? '',
-    marque: existing?.marque ?? '',
-    modele: existing?.modele ?? '',
-    motorisation: existing?.motorisation ?? 'essence',
-    motorisationDetail: existing?.motorisationDetail ?? '',
-    country: existing?.country ?? 'FR',
-    plate: existing?.plate ?? '',
-    couleur: existing?.couleur ?? '',
-    miseEnCirculation: existing?.miseEnCirculation ?? '',
-    vin: existing?.vin ?? '',
-    km: existing?.km ?? null,
-    dernierCT: existing?.dernierCT ?? '',
-    notes: existing?.notes ?? '',
+  const [f, setF] = useState<VehicleInput>(() => toForm(existing, params.get('client') ?? ''))
+  const guard = useStaleGuard(existing, (v) => {
+    setF(toForm(v, ''))
+    setErrors({})
+    setDupes([])
   })
   const [errors, setErrors] = useState<Partial<Record<keyof VehicleInput, string>>>({})
   const [dupes, setDupes] = useState<Row<Vehicle>[]>([])
@@ -43,6 +51,7 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
 
   const patch = <K extends keyof VehicleInput>(k: K, v: VehicleInput[K]) => {
     setF((p) => ({ ...p, [k]: v }))
+    guard.markTouched()
     setDupes([])
     setSaved(false)
   }
@@ -69,7 +78,10 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
       }
     }
     const id = await saveVehicle(f, existing)
-    if (existing) setSaved(true)
+    if (existing) {
+      guard.saved((await db.vehicles.get(id))!.updatedAt)
+      setSaved(true)
+    }
     else nav(`/vehicules/${id}`, { replace: true })
   }
 
@@ -84,6 +96,7 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
     <>
       <h1>{existing ? `${existing.marque} ${existing.modele}` : 'Nouveau véhicule'}</h1>
       {existing && <PlateBadge vehicle={existing} />}
+      {guard.stale && <StaleBanner onReload={guard.reloadNow} onKeep={guard.keepMine} />}
       <form onSubmit={submit} noValidate className="form">
         <ClientPicker value={f.clientId} onChange={(cid) => patch('clientId', cid)} error={errors.clientId} />
         {f.clientId && <Link className="link" to={`/clients/${f.clientId}`}>Voir la fiche du propriétaire</Link>}
