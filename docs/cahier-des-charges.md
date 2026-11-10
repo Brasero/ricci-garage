@@ -1,7 +1,7 @@
 # Cahier des charges — Ricci Garage
 
-> **Statut : BROUILLON v0.3 — en attente de validation.** Aucun code n'est écrit tant que ce document n'est pas validé.
-> Les points marqués ❓ sont des questions ouvertes (regroupées en section 10).
+> **Statut : BROUILLON v0.4 — en attente de validation.** Aucun code n'est écrit tant que ce document n'est pas validé.
+> Les points marqués ❓ sont des questions ouvertes (regroupées en section 10). Plus de question bloquante : le document peut être validé.
 
 ## 0. Décisions validées
 - Hébergement **Cloudflare** (Pages + Workers + D1 + R2).
@@ -10,6 +10,10 @@
 - Pièces : **prix d'achat et prix de vente** (marge visible).
 - **Pas de taux horaire** : durée et prix de main d'œuvre sont deux saisies libres, indépendantes.
 - **Rappels par email** au client et au père.
+- **Pas de nom de domaine** : sous-domaine gratuit Cloudflare (`*.pages.dev` / `*.workers.dev`).
+- **Envoi d'emails via Nodemailer + SMTP Gmail** (expéditeur et destinataire du récapitulatif : `riccimichel3@gmail.com`).
+- Délais de rappel et coordonnées du garage **paramétrables** (écran Paramètres, section 3.8).
+- Aucune donnée à importer.
 - Plaque LU : **2 lettres + 4 chiffres** (`AB 1234`).
 
 ## 1. Contexte et objectifs
@@ -114,6 +118,16 @@ Un seul champ de recherche, tolérant (accents, majuscules, séparateurs), qui r
 et accessoirement : téléphone du client, texte des interventions.
 Résultat : liste de véhicules avec propriétaire visible. Fonctionne **hors connexion**.
 
+### 3.8 Paramètres (modifiables depuis l'application)
+- **Coordonnées du garage** : nom, adresse, téléphone, email de contact, mention libre en pied de mail (utilisées dans les emails).
+- **Délais de rappel** (valeurs par défaut) :
+  - rendez-vous : **la veille** et **1 h avant** ;
+  - contrôle technique, vidange et autres échéances : **30 jours** et **7 jours avant** ;
+  - chaque délai est modifiable, ajoutable/supprimable, et activable/désactivable séparément pour les clients et pour le père ;
+  - réglage possible par échéance ou par client (ex. ne pas écrire à tel client).
+- **Email du récapitulatif** (par défaut `riccimichel3@gmail.com`) et heure d'envoi.
+- Types d'intervention et d'échéance (listes extensibles).
+
 ### 3.7 Fonctions transverses
 - **Authentification** : un seul compte protégé (mot de passe ; session longue sur ses appareils).
 - **Sauvegarde / export** : export complet (données + photos) en un clic et copie automatique régulière.
@@ -123,7 +137,8 @@ Résultat : liste de véhicules avec propriétaire visible. Fonctionne **hors co
 ## 4. Besoins non fonctionnels
 - **RGPD** : noms, téléphones, plaques, photos = données personnelles. HTTPS, mot de passe hashé, hébergement UE si possible, export et suppression d'un client sur demande.
 - **Volumétrie** : quelques milliers de fiches, plusieurs milliers de photos à terme → les photos sont **compressées côté appareil** (~200 à 400 Ko) pour tenir dans les quotas gratuits.
-- **Coût** : 0 € d'hébergement ; un nom de domaine (~10 €/an) devient nécessaire pour les emails clients.
+- **Coût** : 0 € (sous-domaine Cloudflare gratuit, SMTP Gmail gratuit).
+- **Limite assumée** : une URL du type `ricci-garage.pages.dev` (pas de nom personnalisé) ; les mails partent d'une adresse Gmail personnelle, ce qui est moins « pro » mais fiable à ce volume.
 - **Maintenance** : simple, tenable par une seule personne.
 
 ## 5. Architecture proposée
@@ -164,7 +179,7 @@ Deux sens = deux sources de vérité = conflits difficiles et OAuth plus lourd (
 Les notifications push d'une PWA marchent bien sur Android et PC (pas de contrainte iPhone puisque l'utilisateur est sur Android). Elles ne sont jamais garanties à l'heure exacte. Stratégie à trois niveaux, tous gratuits :
 1. Notification push de la PWA ;
 2. Rappels via Google Calendar (fiables, natifs) ;
-3. Emails (père : récapitulatif ; clients : rappels), envoyés par un Cron Trigger Cloudflare via un service d'envoi à quota gratuit (ex. Resend, ~100 mails/jour). ⚠️ **Pour écrire aux clients, il faut un nom de domaine** (~10 €/an) dont on vérifie l'envoi (SPF/DKIM) : sans cela, les mails partent en spam ou ne peuvent être envoyés qu'à une adresse vérifiée. C'est le seul coût du projet ; quotas gratuits à re-vérifier au moment de l'implémentation.
+3. Emails (père : récapitulatif ; clients : rappels), envoyés par un Cron Trigger Cloudflare avec **Nodemailer via SMTP Gmail** (`smtp.gmail.com`, mot de passe d'application Google, validation en 2 étapes requise sur le compte, secret stocké dans les secrets Cloudflare, jamais dans le code). Limite Gmail ~500 mails/jour, très largement suffisant. Les réponses des clients arrivent directement dans la boîte Gmail. ⚠️ **Risque technique** : Nodemailer s'appuie sur des sockets TCP Node ; leur support dans les Workers Cloudflare (`nodejs_compat`) est récent et je ne l'ai pas validé. **Un test de faisabilité (« spike ») sera fait au tout début du jalon 3** ; si cela échoue, repli sur l'API Gmail en HTTPS (`fetch`) avec le même compte, sans changer le reste.
 
 ## 6. Modèle de données (aperçu)
 `Client` 1—n `Véhicule` 1—n `Intervention` 1—n (`LignePièce`, `Photo`) ; `Véhicule` 1—n `Échéance` ; `RendezVous` → `Client` (+ `Véhicule` optionnel, + `Intervention` éventuelle). Tous : `id` (UUID), `createdAt`, `updatedAt`, `deletedAt`.
@@ -186,8 +201,7 @@ Le mode hors connexion est construit **dès le jalon 1** (le rajouter après rev
 - Une sauvegarde exportée peut être restaurée sur une installation vierge.
 
 ## 10. Questions ouvertes
-1. Nom de domaine : en as-tu déjà un, ou on en prend un (ex. ricci-garage.lu / .fr) ?
-2. Adresse email d'expéditeur souhaitée pour les clients (ex. contact@…) et adresse du père pour le récapitulatif ?
-3. Délais de rappel par défaut : rendez-vous (veille + 1 h ?), CT/vidange (30 jours + 7 jours avant ?) ?
-4. Données existantes à importer (Excel, carnet) ?
-5. Coordonnées du garage à afficher dans les emails (nom, adresse, téléphone) ?
+Aucune bloquante. À valider par toi :
+1. Es-tu d'accord avec l'URL sous-domaine gratuit (`xxx.pages.dev`) et l'envoi depuis une adresse Gmail personnelle ?
+2. Peux-tu activer la validation en 2 étapes sur `riccimichel3@gmail.com` et créer le « mot de passe d'application » le moment venu (je te guiderai) ? **Ne me le communique jamais dans le chat** : il sera saisi directement comme secret Cloudflare.
+3. Le document est-il validé tel quel pour démarrer le jalon 1 ?
