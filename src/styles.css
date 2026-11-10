@@ -108,3 +108,34 @@ a { color: var(--primary); }
 .lock-card h1 { margin: 0; }
 .lock-card .search { text-align: center; margin: 0; }
 .lock-icon { font-size: 3rem; }
+
+.nav { grid-template-columns: repeat(6, 1fr) !important; }
+.nav a { font-size: .66rem; min-width: 0; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabs { grid-template-columns: repeat(4, 1fr); margin-bottom: 12px; }
+.warn-text { color: var(--warn); font-weight: 600; font-size: .92em; }
+.agenda-item.dim { opacity: .55; }
+.agenda-item.rdv { border-left: 4px solid #1f6fd1; }
+.agenda-item.inter { border-left: 4px solid var(--ok); }
+.agenda-item.echeance { border-left: 4px solid var(--warn); }
+.cal-nav { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.cal-nav .btn { min-height: 44px; padding: 0 14px; }
+.cal-label { flex: 1; text-align: center; text-transform: capitalize; min-width: 140px; }
+h2.today { color: var(--primary); }
+.empty.small { padding: 6px 0; }
+.month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 12px; }
+.month-head { text-align: center; font-size: .75rem; color: var(--muted); padding: 2px 0; }
+.month-cell { display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-height: 52px; padding: 6px 2px 4px; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+.month-cell.other { opacity: .4; }
+.month-cell.today { border-color: var(--primary); font-weight: 700; }
+.month-cell.selected { background: var(--primary); color: var(--primary-text); border-color: var(--primary); }
+.dots { display: flex; gap: 3px; min-height: 8px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.dot.rdv { background: #1f6fd1; } .dot.inter { background: var(--ok); } .dot.echeance { background: var(--warn); }
+.month-cell.selected .dot { box-shadow: 0 0 0 1px #fff; }
+
+.prompt { display: grid; gap: 8px; padding: 12px 14px; margin: 16px 0; background: var(--warn-bg); border: 1px solid var(--warn); border-radius: var(--radius); }
+.prompt h2 { margin: 0; }
+.prompt .field input { background: var(--surface); }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: .95rem; }
+.check input { width: 22px; height: 22px; margin-top: 2px; flex: none; }
+.banner { display: block; text-decoration: none; font-weight: 600; margin-bottom: 10px; }

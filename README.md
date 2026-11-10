@@ -1,6 +1,6 @@
 # Ricci Garage
 
-Application web (PWA) de suivi pour un garage : clients, véhicules (plaques FR/LU), interventions chiffrées avec photos, recherche globale.
+Application web (PWA) de suivi pour un garage : clients, véhicules (plaques FR/LU), interventions chiffrées avec photos, agenda et rappels par email, recherche globale.
 Fonctionne **hors connexion** : tout s'écrit d'abord sur l'appareil, puis se synchronise.
 Cahier des charges : [`docs/cahier-des-charges.md`](docs/cahier-des-charges.md).
 
@@ -19,6 +19,27 @@ Cahier des charges : [`docs/cahier-des-charges.md`](docs/cahier-des-charges.md).
 - « Se déconnecter » (Réglages) efface cette empreinte : l'appareil exige alors une connexion en ligne.
 - Limites à connaître : les données de l'appareil restent dans le navigateur (non chiffrées) ; l'écran de code protège l'application, pas un examen technique du téléphone (garder un verrouillage d'écran). L'empreinte locale d'un code court se casse vite : **choisir une phrase de passe d'au moins 12 caractères**. Après un changement d'`APP_PASSWORD`, l'ancien code reste valable hors connexion sur les appareils déjà connectés jusqu'à leur prochaine connexion en ligne (ou « Se déconnecter »).
 - Quota : comme tout passe par le Worker, chaque fichier chargé compte dans les 100 000 requêtes/jour du forfait gratuit ; l'application étant mise en cache sur l'appareil, l'usage prévu en est très loin.
+
+## Agenda et rappels par email
+
+- **Agenda** : « À venir » (échéances en retard, rendez-vous des 14 jours, échéances des 30 jours, échéances au kilométrage, interventions à faire) et calendrier jour / semaine / mois.
+- **Rendez-vous** (avertissement de chevauchement, « Créer l'intervention » en un clic), **échéances** par date et/ou kilométrage (contrôle technique, vidange, autre). À la clôture d'une intervention, le prochain rappel est proposé (ex. vidange : +12 mois ou +15 000 km).
+- **Réglages** (onglet Réglages) : coordonnées du garage, délais de rappel (par défaut : rendez-vous la veille et 1 h avant ; échéances 30 et 7 jours avant), heure d'envoi, destinataires. Chaque client peut être exclu des rappels (case sur sa fiche).
+- **Emails** : un Cron Trigger Cloudflare vérifie toutes les 15 minutes ce qui doit partir et l'envoie avec **Nodemailer** (SMTP). Chaque rappel est journalisé (`reminder_log`) et n'est jamais envoyé deux fois ; un envoi raté est retenté tant que son créneau n'est pas passé. Le client reçoit les rappels de rendez-vous et d'échéance datée ; le père reçoit le récapitulatif quotidien (et, si activé, les rappels de rendez-vous).
+
+### Configurer l'envoi (Gmail)
+
+1. Sur le compte Gmail expéditeur : activer la validation en 2 étapes, puis créer un **mot de passe d'application** (Compte Google → Sécurité → Mots de passe des applications).
+2. Enregistrer les secrets dans Cloudflare (le mot de passe est saisi dans le terminal, jamais dans un fichier ni dans GitHub) :
+
+```bash
+npx wrangler secret put SMTP_USER        # l'adresse Gmail expéditrice
+npx wrangler secret put SMTP_PASSWORD    # le mot de passe d'application (16 caractères)
+```
+
+3. Dans l'application : Réglages → « Envoyer un email de test ». Tant que ce test n'a pas réussi, aucun rappel ne part (l'état d'envoi est affiché dans Réglages).
+
+Si le test échoue avec Gmail, c'est la seule partie non vérifiable hors ligne (voir « Limites ») : le message d'erreur s'affiche dans Réglages.
 
 ## Développement local
 
@@ -58,6 +79,12 @@ Configuration à faire **une seule fois** :
 2. Cloudflare → *My Profile → API Tokens → Create Token* → modèle « Edit Cloudflare Workers », puis ajouter les permissions *Account → D1 → Edit* et *Account → Workers R2 Storage → Edit*. Limiter le jeton à ton compte.
 3. GitHub → *Settings → Secrets and variables → Actions* : ajouter `CLOUDFLARE_API_TOKEN` (le jeton) et `CLOUDFLARE_ACCOUNT_ID` (visible dans le tableau de bord Cloudflare). Idéalement dans l'environnement `production` (Settings → Environments), qui peut aussi exiger une approbation avant déploiement.
 4. Recommandé : protéger `main` (Settings → Branches) pour imposer la PR et le succès de « Vérifications ».
+
+## Limites connues
+
+- **Envoi Gmail non testé de bout en bout** : Nodemailer a été testé sous `wrangler dev` (runtime Workers) contre un serveur SMTP local sans TLS, avec authentification : l'envoi fonctionne. La connexion TLS vers Gmail (port 465) n'a pas pu être vérifiée hors ligne. Le bouton « Envoyer un email de test » sert à le valider après déploiement. En cas d'échec, solutions de repli : client SMTP minimal sur `cloudflare:sockets`, ou API Gmail en HTTPS.
+- Pas de rappel par email pour une échéance **au kilométrage** (le kilométrage n'est connu que quand une intervention le relève) : elle apparaît dans « À venir » et dans le récapitulatif quotidien quand il reste moins de 1 000 km.
+- Pas encore de synchronisation Google Calendar (jalon 4).
 
 ## Sauvegardes
 

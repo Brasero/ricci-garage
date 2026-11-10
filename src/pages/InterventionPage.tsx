@@ -1,12 +1,13 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { computeTotals, eurosToInput, formatEuros, parseEuros } from '../../shared/money'
 import { INTERVENTION_TYPES, STATUTS, type Intervention, type InterventionType, type Piece, type Statut } from '../../shared/types'
+import { NextReminderPrompt } from '../components/NextReminderPrompt'
 import { PhotoGallery } from '../components/Photos'
 import { Field, StaleBanner, VehiclePicker } from '../components/ui'
 import { db, type Row } from '../db'
-import { saveIntervention, setInterventionArchived, type InterventionInput } from '../repo'
+import { linkRdvToIntervention, saveIntervention, setInterventionArchived, type InterventionInput } from '../repo'
 import { useStaleGuard } from '../useStaleGuard'
 
 const MAX_PIECES = 50
@@ -124,8 +125,20 @@ export function InterventionPage() {
 
 function InterventionForm({ existing }: { existing?: Row<Intervention> }) {
   const nav = useNavigate()
+  const location = useLocation()
   const [params] = useSearchParams()
+  const rdvId = params.get('rdv')
   const [f, setF] = useState<FormState>(() => toForm(existing, params.get('vehicule') ?? ''))
+  const [promptOpen, setPromptOpen] = useState(() => !!(location.state as { askReminder?: boolean } | null)?.askReminder)
+
+  // Création depuis un rendez-vous : on reprend son heure, son motif et son véhicule.
+  useEffect(() => {
+    if (existing || !rdvId) return
+    void db.rdvs.get(rdvId).then((r) => {
+      if (!r) return
+      setF((p) => ({ ...p, startAt: toLocalInput(r.startAt), description: p.description || r.motif, vehicleId: p.vehicleId || r.vehicleId || '' }))
+    })
+  }, [existing, rdvId])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saved, setSaved] = useState(false)
   const guard = useStaleGuard(existing, (i) => {
@@ -148,10 +161,15 @@ function InterventionForm({ existing }: { existing?: Row<Intervention> }) {
     setErrors(parsed.errors)
     if (!parsed.input) return
     const id = await saveIntervention(parsed.input, existing)
+    const ask = parsed.input.statut === 'terminee' && !(await db.echeances.filter((e) => e.sourceInterventionId === id && !e.deletedAt).count())
     if (existing) {
       guard.saved((await db.interventions.get(id))!.updatedAt)
       setSaved(true)
-    } else nav(`/interventions/${id}`, { replace: true })
+      if (ask) setPromptOpen(true)
+    } else {
+      if (rdvId) await linkRdvToIntervention(rdvId, id)
+      nav(`/interventions/${id}`, { replace: true, state: { askReminder: ask } })
+    }
   }
 
   async function archive() {
@@ -236,6 +254,7 @@ function InterventionForm({ existing }: { existing?: Row<Intervention> }) {
         {saved && <p className="ok-msg" role="status">✓ Enregistré</p>}
       </form>
 
+      {existing && promptOpen && <NextReminderPrompt intervention={existing} onDone={() => setPromptOpen(false)} />}
       {existing ? (
         <>
           <PhotoGallery interventionId={existing.id} />

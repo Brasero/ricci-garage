@@ -29,10 +29,10 @@ export function useSyncState(): SyncState {
 const BATCH = 200
 const MAX_ROUNDS = 50
 
-const KINDS: RecordKind[] = ['client', 'vehicle', 'intervention', 'photo']
+const KINDS: RecordKind[] = ['client', 'vehicle', 'intervention', 'photo', 'rdv', 'echeance', 'settings']
 
 function table(kind: RecordKind): typeof db.clients {
-  const t = { client: db.clients, vehicle: db.vehicles, intervention: db.interventions, photo: db.photos }[kind]
+  const t = { client: db.clients, vehicle: db.vehicles, intervention: db.interventions, photo: db.photos, rdv: db.rdvs, echeance: db.echeances, settings: db.settings }[kind]
   return t as unknown as typeof db.clients
 }
 
@@ -130,7 +130,7 @@ export async function syncNow(): Promise<void> {
         return
       }
       const out = (await res.json()) as SyncResponse
-      await db.transaction('rw', [db.clients, db.vehicles, db.interventions, db.photos, db.meta], async () => {
+      await db.transaction('rw', [db.clients, db.vehicles, db.interventions, db.photos, db.rdvs, db.echeances, db.settings, db.meta], async () => {
         for (const ch of out.changes) {
           const t = table(ch.kind)
           const local = await t.get(ch.id)

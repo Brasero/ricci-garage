@@ -4,6 +4,7 @@ import { serverAccepts } from '../shared/sync'
 import type { RecordKind, SyncChange, SyncRequest, SyncResponse } from '../shared/types'
 import { loginPage } from './loginPage'
 import { sendMail, type MailEnv } from './mail'
+import { getStatus, loadAll, mailConfigured, runReminders } from './reminders'
 import { sniffImage } from './photos'
 import { SESSION_COOKIE, SESSION_MAX_AGE, createSession, safeEqual, verifySession } from './auth'
 
@@ -19,7 +20,7 @@ interface Env extends Partial<MailEnv> {
   SESSION_SECRET: string
 }
 
-const KINDS: RecordKind[] = ['client', 'vehicle', 'intervention', 'photo']
+const KINDS: RecordKind[] = ['client', 'vehicle', 'intervention', 'photo', 'rdv', 'echeance', 'settings']
 const MAX_PHOTO_BYTES = 1_500_000
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const MAX_DATA_BYTES = 20_000
@@ -180,10 +181,25 @@ app.get('/api/photos/:id', async (c) => {
   })
 })
 
+// État de l'envoi d'emails (affiché dans les Réglages).
+app.get('/api/mail/status', async (c) => {
+  const recent = await c.env.DB.prepare('SELECT sent_at, to_addr, subject FROM reminder_log ORDER BY sent_at DESC LIMIT 5').all()
+  return c.json({ configured: mailConfigured(c.env), lastRun: await getStatus(c.env.DB), recent: recent.results })
+})
+
+// Email de test vers l'adresse du récapitulatif : sert à vérifier la configuration SMTP (Gmail).
 app.post('/api/mail/test', async (c) => {
-  if (!c.env.SMTP_USER || !c.env.SMTP_PASSWORD) return c.json({ error: 'smtp_not_configured' }, 503)
+  if (!mailConfigured(c.env)) return c.json({ error: 'smtp_not_configured' }, 503)
+  const { settings } = await loadAll(c.env.DB)
   try {
-    await sendMail(c.env as MailEnv, { fromName: 'Test', to: 'dest@example.com', subject: 'Test', text: 'Bonjour', html: '<p>Bonjour</p>' })
+    await sendMail(c.env as MailEnv, {
+      fromName: settings.garageNom,
+      to: settings.emailRecap,
+      replyTo: settings.garageEmail || undefined,
+      subject: `Test d'envoi — ${settings.garageNom}`,
+      text: "Si vous lisez ce message, l'envoi d'emails fonctionne.",
+      html: "<p>Si vous lisez ce message, l'envoi d'emails fonctionne.</p>",
+    })
     return c.json({ ok: true })
   } catch (e) {
     return c.json({ error: 'send_failed', detail: e instanceof Error ? e.message : String(e) }, 502)
@@ -232,4 +248,10 @@ app.all('*', async (c) => {
   })
 })
 
-export default app
+export default {
+  fetch: app.fetch,
+  // Déclenché par le cron de wrangler.jsonc (toutes les 15 minutes).
+  scheduled(_controller, env, ctx) {
+    ctx.waitUntil(runReminders(env))
+  },
+} satisfies ExportedHandler<Env>

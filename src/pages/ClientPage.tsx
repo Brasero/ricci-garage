@@ -23,6 +23,7 @@ const toForm = (c?: Client): ClientInput => ({
   telephone: c?.telephone ?? '',
   email: c?.email ?? '',
   notes: c?.notes ?? '',
+  rappelsEmail: c?.rappelsEmail ?? true,
 })
 
 function ClientForm({ existing }: { existing?: Row<Client> }) {
@@ -107,6 +108,12 @@ function ClientForm({ existing }: { existing?: Row<Client> }) {
         <Field label="Email (facultatif)" error={errors.email}>
           <input type="email" value={f.email} onChange={set('email')} autoComplete="email" />
         </Field>
+        {f.email.trim() && (
+          <label className="check">
+            <input type="checkbox" checked={f.rappelsEmail !== false} onChange={(e) => { setF((p) => ({ ...p, rappelsEmail: e.target.checked })); guard.markTouched(); setSaved(false) }} />
+            Envoyer des rappels par email à ce client (rendez-vous, contrôle technique, vidange…)
+          </label>
+        )}
         <Field label="Notes">
           <textarea rows={3} value={f.notes} onChange={set('notes')} />
         </Field>

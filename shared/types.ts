@@ -1,6 +1,6 @@
 import type { Country } from './plate'
 
-export type RecordKind = 'client' | 'vehicle' | 'intervention' | 'photo'
+export type RecordKind = 'client' | 'vehicle' | 'intervention' | 'photo' | 'rdv' | 'echeance' | 'settings'
 
 export interface BaseRecord {
   /** UUID généré sur l'appareil : permet de créer hors connexion. */
@@ -18,6 +18,8 @@ export interface Client extends BaseRecord {
   telephone: string
   email: string
   notes: string
+  /** Rappels par email à ce client (rendez-vous, échéances). Absent = oui. */
+  rappelsEmail?: boolean
 }
 
 export const MOTORISATIONS = [
@@ -102,6 +104,68 @@ export interface Photo extends BaseRecord {
   interventionId: string
   mime: string
   size: number
+}
+
+export const RDV_STATUTS = [
+  ['prevu', 'Prévu'],
+  ['honore', 'Honoré'],
+  ['annule', 'Annulé'],
+] as const
+export type RdvStatut = (typeof RDV_STATUTS)[number][0]
+
+export interface RendezVous extends BaseRecord {
+  clientId: string
+  vehicleId: string | null
+  startAt: number
+  /** Durée estimée en minutes. */
+  dureeMin: number
+  motif: string
+  statut: RdvStatut
+  notes: string
+  /** Intervention créée à partir de ce rendez-vous. */
+  interventionId: string | null
+}
+
+export const ECHEANCE_TYPES = [
+  ['ct', 'Contrôle technique'],
+  ['vidange', 'Vidange / entretien'],
+  ['autre', 'Autre'],
+] as const
+export type EcheanceType = (typeof ECHEANCE_TYPES)[number][0]
+
+/** Échéance d'un véhicule, par date (AAAA-MM-JJ) et/ou par kilométrage. */
+export interface Echeance extends BaseRecord {
+  vehicleId: string
+  type: EcheanceType
+  /** Libellé libre (obligatoire pour « Autre »). */
+  libelle: string
+  dateDue: string | null
+  kmDue: number | null
+  statut: 'ouverte' | 'faite'
+  sourceInterventionId: string | null
+  notes: string
+}
+
+/** Réglages du garage et des rappels (un seul enregistrement, id fixe). */
+export interface Settings extends BaseRecord {
+  garageNom: string
+  garageAdresse: string
+  garageTelephone: string
+  garageEmail: string
+  /** Mention libre en pied des emails. */
+  signature: string
+  /** Destinataire du récapitulatif quotidien. */
+  emailRecap: string
+  /** Heure d'envoi (0–23, heure du Luxembourg/Paris) du récapitulatif et des rappels d'échéance. */
+  heureEnvoi: number
+  recapActif: boolean
+  rappelsClientActifs: boolean
+  /** Rappels de rendez-vous aussi envoyés à l'adresse du récapitulatif. */
+  rappelsRdvPereActifs: boolean
+  /** Délais avant un rendez-vous, en minutes (1440 = la veille, 60 = 1 h avant). */
+  delaisRdvMin: number[]
+  /** Délais avant une échéance datée, en jours. */
+  delaisEcheanceJours: number[]
 }
 
 /** Format échangé avec le serveur. */

@@ -1,19 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, NavLink, Outlet } from 'react-router-dom'
-import { db } from '../db'
+import { countPending } from '../db'
 import { useSyncState } from '../sync'
 
 function SyncBadge() {
   const { status } = useSyncState()
-  const pending = useLiveQuery(
-    async () =>
-      (await db.clients.where('dirty').equals(1).count()) +
-      (await db.vehicles.where('dirty').equals(1).count()) +
-      (await db.interventions.where('dirty').equals(1).count()) +
-      (await db.photos.where('dirty').equals(1).or('uploaded').equals(0).count()),
-    [],
-    0,
-  )
+  const pending = useLiveQuery(countPending, [], 0)
   const waiting = pending > 0 ? ` · ${pending} en attente` : ''
   if (status === 'unauthorized')
     return (
@@ -32,6 +24,7 @@ const NAV = [
   { to: '/clients', label: 'Clients', icon: '👤' },
   { to: '/vehicules', label: 'Véhicules', icon: '🚗' },
   { to: '/interventions', label: 'Interventions', icon: '🔧' },
+  { to: '/agenda', label: 'Agenda', icon: '📅' },
   { to: '/parametres', label: 'Réglages', icon: '⚙️' },
 ]
 

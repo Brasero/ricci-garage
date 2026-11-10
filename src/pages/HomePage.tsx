@@ -2,6 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { searchAll, searchInterventions } from '../../shared/search'
+import { TIMEZONE } from '../../shared/settings'
+import { localDate } from '../../shared/time'
 import { db } from '../db'
 import { fullName } from '../repo'
 import { VehicleCard, fmtDateTime } from '../components/ui'
@@ -12,6 +14,10 @@ export function HomePage() {
   const clients = useLiveQuery(() => db.clients.toArray(), [], [])
   const vehicles = useLiveQuery(() => db.vehicles.toArray(), [], [])
   const interventions = useLiveQuery(() => db.interventions.toArray(), [], [])
+  const overdue = useLiveQuery(async () => {
+    const today = localDate(Date.now(), TIMEZONE)
+    return db.echeances.filter((e) => !e.deletedAt && e.statut === 'ouverte' && !!e.dateDue && e.dateDue < today).count()
+  }, [], 0)
   const result = useMemo(() => searchAll(q, clients, vehicles), [q, clients, vehicles])
   const iHits = useMemo(() => searchInterventions(q, interventions, vehicles, clients).slice(0, 10), [q, interventions, vehicles, clients])
   const searching = q.trim().length > 0
@@ -34,6 +40,9 @@ export function HomePage() {
         aria-label="Recherche globale"
         autoFocus
       />
+      {!searching && overdue > 0 && (
+        <Link to="/agenda" className="warning banner" role="alert">⏰ {overdue} échéance{overdue > 1 ? 's' : ''} en retard — voir l'agenda</Link>
+      )}
       {!searching && (
         <div className="actions">
           <Link className="btn primary" to="/clients/nouveau">
