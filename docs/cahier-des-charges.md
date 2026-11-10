@@ -1,7 +1,16 @@
 # Cahier des charges — Ricci Garage
 
-> **Statut : BROUILLON v0.2 — en attente de validation.** Aucun code n'est écrit tant que ce document n'est pas validé.
-> Les points marqués ❓ sont des questions ouvertes (regroupées en section 9).
+> **Statut : BROUILLON v0.3 — en attente de validation.** Aucun code n'est écrit tant que ce document n'est pas validé.
+> Les points marqués ❓ sont des questions ouvertes (regroupées en section 10).
+
+## 0. Décisions validées
+- Hébergement **Cloudflare** (Pages + Workers + D1 + R2).
+- Utilisateur sur **Android** + PC (notifications push PWA fiables sur Android).
+- Front en **React**.
+- Pièces : **prix d'achat et prix de vente** (marge visible).
+- **Pas de taux horaire** : durée et prix de main d'œuvre sont deux saisies libres, indépendantes.
+- **Rappels par email** au client et au père.
+- Plaque LU : **2 lettres + 4 chiffres** (`AB 1234`).
 
 ## 1. Contexte et objectifs
 
@@ -58,7 +67,7 @@ Créer, modifier, consulter (fiche avec ses véhicules, interventions et rendez-
 
 Règles d'immatriculation :
 - FR : SIV `AB-123-CD` ; ancien format `123 ABC 45` toléré ❓.
-- LU : format courant `AB 1234` ; variantes historiques existantes ❓ (exemples réels à fournir).
+- LU : 2 lettres + 4 chiffres (`AB 1234`), validé par `^[A-Z]{2}[0-9]{4}$` après normalisation.
 - Normalisation (majuscules, sans séparateurs) pour la recherche et l'unicité ; avertissement si la plaque existe déjà.
 
 Un véhicule appartient à **un client** ; un client peut avoir **plusieurs véhicules** ; le propriétaire peut changer, l'historique reste attaché au véhicule.
@@ -69,13 +78,13 @@ Une intervention est liée à **un véhicule** (et donc à son client).
 | Champ | Détail |
 |---|---|
 | Date et heure | horodatage (début), modifiable |
-| Durée | temps passé réel (heures/minutes) |
+| Durée | temps passé réel (heures/minutes), saisie libre, indépendante du prix |
 | Kilométrage | relevé lors de l'intervention |
 | Type | liste : vidange, freins, distribution, pneus, diagnostic, contrôle, autre… (extensible) |
 | Description / travaux effectués | texte libre |
-| Pièces | lignes : désignation, référence, quantité, prix unitaire (achat et/ou vente ❓) |
-| Main d'œuvre | durée × taux horaire (taux par défaut configurable) |
-| Total | calculé automatiquement (pièces + main d'œuvre) |
+| Pièces | lignes : désignation, référence, quantité, **prix d'achat** et **prix de vente** unitaires |
+| Main d'œuvre | **prix saisi librement** (aucun calcul à partir de la durée) |
+| Totaux | calculés : total pièces (vente), total achat, **marge sur pièces**, total général = pièces vente + main d'œuvre |
 | Photos | plusieurs, prises directement avec l'appareil photo du téléphone |
 | Statut | à faire / en cours / terminée |
 | Notes internes | texte libre |
@@ -94,7 +103,8 @@ Historique complet par véhicule, consultable en chronologie.
 - **Rappels de rendez-vous** (ex. la veille et 1 h avant).
 - Écran « À venir » : échéances dépassées ou proches (30 jours), triées.
 - Canaux de notification : voir 5.5 (contrainte technique importante).
-- ❓ Faut-il aussi envoyer un rappel **au client** (SMS/email) ? Le SMS n'est pas gratuit ; l'email l'est.
+- **Rappels email au client** (rendez-vous, échéance CT/vidange) uniquement si son email est renseigné ; **récapitulatif email au père** (agenda du jour/lendemain et échéances proches). Envoi automatique configurable (délais, activé/désactivé par client). SMS exclu (payant).
+- Les emails client sont des messages de service (pas de publicité) et précisent le garage et un moyen de contact.
 
 ### 3.6 Recherche globale
 Un seul champ de recherche, tolérant (accents, majuscules, séparateurs), qui retrouve un véhicule par :
@@ -113,7 +123,7 @@ Résultat : liste de véhicules avec propriétaire visible. Fonctionne **hors co
 ## 4. Besoins non fonctionnels
 - **RGPD** : noms, téléphones, plaques, photos = données personnelles. HTTPS, mot de passe hashé, hébergement UE si possible, export et suppression d'un client sur demande.
 - **Volumétrie** : quelques milliers de fiches, plusieurs milliers de photos à terme → les photos sont **compressées côté appareil** (~200 à 400 Ko) pour tenir dans les quotas gratuits.
-- **Coût** : 0 € d'hébergement (hors éventuel nom de domaine, ~10 €/an, optionnel).
+- **Coût** : 0 € d'hébergement ; un nom de domaine (~10 €/an) devient nécessaire pour les emails clients.
 - **Maintenance** : simple, tenable par une seule personne.
 
 ## 5. Architecture proposée
@@ -137,12 +147,12 @@ Analogie : c'est comme le **carnet que ton père garde dans sa poche** et qu'il 
 | Tâches planifiées (rappels) | Cron Triggers inclus | possible via fonctions programmées |
 | Complexité | un peu plus de code serveur à écrire | un peu moins |
 
-**Ma recommandation : A (Cloudflare)**, car la mise en pause de Supabase est précisément le piège d'un usage faible. ❓ À confirmer : tu es à l'aise pour gérer un compte Cloudflare ? (sinon on décide ensemble de l'option B avec un « ping » périodique).
+**Choix retenu : A (Cloudflare)**, car la mise en pause de Supabase est précisément le piège d'un usage faible.
 
 Écarté : Firebase (le stockage de fichiers exige désormais un forfait avec carte bancaire).
 
 ### 5.3 Stack applicative (à valider)
-TypeScript partout (une seule langue pour le front et le serveur) ; front léger (Svelte ou React ❓ selon ta préférence) ; base locale IndexedDB (Dexie) ; composant calendrier open source. Tests sur les règles métier (plaques, synchronisation, rappels).
+TypeScript partout (une seule langue pour le front et le serveur) ; front **React** (Vite) ; base locale IndexedDB (Dexie) ; composant calendrier open source. Tests sur les règles métier (plaques, synchronisation, rappels).
 
 ### 5.4 Google Calendar : sens unique d'abord
 Deux sens = deux sources de vérité = conflits difficiles et OAuth plus lourd (vérification Google pour certaines autorisations). Je recommande :
@@ -151,11 +161,10 @@ Deux sens = deux sources de vérité = conflits difficiles et OAuth plus lourd (
 - Synchronisation dans l'autre sens (modifier dans Google → app) : reportée, seulement si c'est vraiment utile.
 
 ### 5.5 Rappels : la contrainte à connaître
-Les notifications push d'une PWA marchent sur Android et PC, et sur iPhone **seulement si l'application est installée sur l'écran d'accueil** (iOS 16.4 ou plus). Elles ne sont jamais garanties à l'heure exacte. Stratégie à trois niveaux, tous gratuits :
+Les notifications push d'une PWA marchent bien sur Android et PC (pas de contrainte iPhone puisque l'utilisateur est sur Android). Elles ne sont jamais garanties à l'heure exacte. Stratégie à trois niveaux, tous gratuits :
 1. Notification push de la PWA ;
 2. Rappels via Google Calendar (fiables, natifs) ;
-3. Email récapitulatif quotidien « à venir » (envoi gratuit via un service d'email transactionnel à quota gratuit).
-❓ Quel téléphone utilise ton père (iPhone ou Android) ?
+3. Emails (père : récapitulatif ; clients : rappels), envoyés par un Cron Trigger Cloudflare via un service d'envoi à quota gratuit (ex. Resend, ~100 mails/jour). ⚠️ **Pour écrire aux clients, il faut un nom de domaine** (~10 €/an) dont on vérifie l'envoi (SPF/DKIM) : sans cela, les mails partent en spam ou ne peuvent être envoyés qu'à une adresse vérifiée. C'est le seul coût du projet ; quotas gratuits à re-vérifier au moment de l'implémentation.
 
 ## 6. Modèle de données (aperçu)
 `Client` 1—n `Véhicule` 1—n `Intervention` 1—n (`LignePièce`, `Photo`) ; `Véhicule` 1—n `Échéance` ; `RendezVous` → `Client` (+ `Véhicule` optionnel, + `Intervention` éventuelle). Tous : `id` (UUID), `createdAt`, `updatedAt`, `deletedAt`.
@@ -176,12 +185,9 @@ Le mode hors connexion est construit **dès le jalon 1** (le rajouter après rev
 - Un rendez-vous créé apparaît dans Google Calendar avec ses rappels.
 - Une sauvegarde exportée peut être restaurée sur une installation vierge.
 
-## 9. Questions ouvertes
-1. Cloudflare (option A, recommandée) te convient ?
-2. iPhone ou Android pour ton père ?
-3. Prix des pièces : prix d'achat, prix de vente, ou les deux (pour voir sa marge) ?
-4. Taux horaire de main d'œuvre unique ou variable ?
-5. Rappels aux clients (email/SMS) : utiles ou non ?
-6. Exemples de plaques luxembourgeoises réelles (formats à gérer) ?
-7. Données existantes à importer (Excel, carnet) ?
-8. Préférence front : Svelte (plus léger) ou React (plus répandu) ?
+## 10. Questions ouvertes
+1. Nom de domaine : en as-tu déjà un, ou on en prend un (ex. ricci-garage.lu / .fr) ?
+2. Adresse email d'expéditeur souhaitée pour les clients (ex. contact@…) et adresse du père pour le récapitulatif ?
+3. Délais de rappel par défaut : rendez-vous (veille + 1 h ?), CT/vidange (30 jours + 7 jours avant ?) ?
+4. Données existantes à importer (Excel, carnet) ?
+5. Coordonnées du garage à afficher dans les emails (nom, adresse, téléphone) ?
