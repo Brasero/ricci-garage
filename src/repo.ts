@@ -1,8 +1,8 @@
 import { formatPlate, normalizePlate } from '../shared/plate'
 import { normalizePhone } from '../shared/phone'
 import { normalizeText } from '../shared/text'
-import type { Client, Vehicle } from '../shared/types'
-import { db, type Row } from './db'
+import type { Client, Intervention, Vehicle } from '../shared/types'
+import { db, type PhotoRow, type Row } from './db'
 import { requestSync } from './sync'
 
 export const newId = (): string => crypto.randomUUID()
@@ -111,3 +111,74 @@ export async function findVehiclesByPlate(plate: string, selfId?: string): Promi
 
 export const fullName = (c: Pick<Client, 'nom' | 'prenom'> | undefined): string =>
   c ? `${c.prenom} ${c.nom}`.trim() : '(client inconnu)'
+
+// ───────────── Interventions ─────────────
+
+export type InterventionInput = Pick<
+  Intervention,
+  'vehicleId' | 'startAt' | 'dureeMin' | 'km' | 'type' | 'description' | 'pieces' | 'mainOeuvreCts' | 'statut' | 'notes'
+>
+
+/**
+ * Enregistre une intervention. Si elle est terminée et relève un kilométrage supérieur à celui du véhicule,
+ * le kilométrage du véhicule est mis à jour (jamais à la baisse).
+ */
+export async function saveIntervention(input: InterventionInput, existing?: Row<Intervention>): Promise<string> {
+  const now = stamp(existing)
+  const row: Row<Intervention> = {
+    ...input,
+    pieces: input.pieces.map((p) => ({ ...p, designation: p.designation.trim(), reference: p.reference.trim() })),
+    description: input.description.trim(),
+    id: existing?.id ?? newId(),
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+    deletedAt: existing?.deletedAt ?? null,
+    dirty: 1,
+  }
+  await db.transaction('rw', db.interventions, db.vehicles, async () => {
+    await db.interventions.put(row)
+    if (row.statut === 'terminee' && row.km !== null) {
+      const v = await db.vehicles.get(row.vehicleId)
+      if (v && (v.km === null || row.km > v.km)) await db.vehicles.put({ ...v, km: row.km, updatedAt: stamp(v), dirty: 1 })
+    }
+  })
+  requestSync()
+  return row.id
+}
+
+export async function setInterventionArchived(id: string, archived: boolean): Promise<void> {
+  const i = await db.interventions.get(id)
+  if (!i) return
+  const now = stamp(i)
+  await db.interventions.put({ ...i, deletedAt: archived ? now : null, updatedAt: now, dirty: 1 })
+  requestSync()
+}
+
+// ───────────── Photos ─────────────
+
+/** Ajoute une photo (déjà compressée) : stockée sur l'appareil, envoyée dès qu'il y a du réseau. */
+export async function addPhoto(interventionId: string, blob: Blob): Promise<string> {
+  const now = Date.now()
+  const row: PhotoRow = {
+    id: newId(),
+    interventionId,
+    mime: blob.type,
+    size: blob.size,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+    dirty: 1,
+    uploaded: 0,
+    blob,
+  }
+  await db.photos.put(row)
+  requestSync()
+  return row.id
+}
+
+export async function deletePhoto(id: string): Promise<void> {
+  const p = await db.photos.get(id)
+  if (!p) return
+  await db.photos.put({ ...p, deletedAt: stamp(p), updatedAt: stamp(p), dirty: 1 })
+  requestSync()
+}

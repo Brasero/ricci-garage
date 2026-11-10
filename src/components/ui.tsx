@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState, type ReactNode } from 'react'
 import { searchAll } from '../../shared/search'
-import type { Client, Vehicle } from '../../shared/types'
+import { STATUTS, type Client, type Statut, type Vehicle } from '../../shared/types'
 import { db } from '../db'
 import { fullName } from '../repo'
 
@@ -88,3 +88,48 @@ export function StaleBanner({ onReload, onKeep }: { onReload: () => void; onKeep
     </div>
   )
 }
+
+export function VehiclePicker({ value, onChange, error }: { value: string; onChange: (id: string) => void; error?: string }) {
+  const [q, setQ] = useState('')
+  const clients = useLiveQuery(() => db.clients.toArray(), [], [])
+  const vehicles = useLiveQuery(() => db.vehicles.toArray(), [], [])
+  const selected = vehicles.find((v) => v.id === value)
+  const owner = selected && clients.find((c) => c.id === selected.clientId)
+  const hits = q.trim() ? searchAll(q, clients, vehicles).vehicles.slice(0, 6) : []
+  return (
+    <Field label="Véhicule *" error={error}>
+      {selected ? (
+        <div className="picked">
+          <span>
+            <PlateBadge vehicle={selected} /> {selected.marque} {selected.modele} <span className="muted">· {fullName(owner)}</span>
+          </span>
+          <button type="button" className="link" onClick={() => onChange('')}>
+            Changer
+          </button>
+        </div>
+      ) : (
+        <>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Plaque, modèle ou nom du propriétaire" autoComplete="off" />
+          {hits.length > 0 && (
+            <ul className="picker-list">
+              {hits.map(({ vehicle: v, owner: o }) => (
+                <li key={v.id}>
+                  <button type="button" onClick={() => onChange(v.id)}>
+                    <strong>{v.plate}</strong> {v.marque} {v.modele} <span className="muted">· {fullName(o)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {q.trim() && hits.length === 0 && <span className="hint">Aucun véhicule trouvé.</span>}
+        </>
+      )}
+    </Field>
+  )
+}
+
+export function StatusBadge({ statut }: { statut: Statut }) {
+  return <span className={`status ${statut}`}>{STATUTS.find((s) => s[0] === statut)?.[1]}</span>
+}
+
+export const fmtDateTime = (ms: number): string => new Date(ms).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })

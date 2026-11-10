@@ -1,17 +1,19 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { searchAll } from '../../shared/search'
+import { searchAll, searchInterventions } from '../../shared/search'
 import { db } from '../db'
 import { fullName } from '../repo'
-import { VehicleCard } from '../components/ui'
+import { VehicleCard, fmtDateTime } from '../components/ui'
 
 export function HomePage() {
   const nav = useNavigate()
   const [q, setQ] = useState('')
   const clients = useLiveQuery(() => db.clients.toArray(), [], [])
   const vehicles = useLiveQuery(() => db.vehicles.toArray(), [], [])
+  const interventions = useLiveQuery(() => db.interventions.toArray(), [], [])
   const result = useMemo(() => searchAll(q, clients, vehicles), [q, clients, vehicles])
+  const iHits = useMemo(() => searchInterventions(q, interventions, vehicles, clients).slice(0, 10), [q, interventions, vehicles, clients])
   const searching = q.trim().length > 0
   const ownerOf = new Map(clients.map((c) => [c.id, c]))
 
@@ -60,6 +62,15 @@ export function HomePage() {
             </Link>
           ))}
           {result.clients.length === 0 && <p className="empty">Aucun client trouvé.</p>}
+          {iHits.length > 0 && <h2>Interventions ({iHits.length})</h2>}
+          {iHits.map(({ intervention: i, vehicle: v, owner: o }) => (
+            <Link key={i.id} to={`/interventions/${i.id}`} className="card clickable">
+              <div className="card-main">
+                <strong>{v.marque} {v.modele} · {fmtDateTime(i.startAt)}</strong>
+                <span className="muted">{fullName(o)} · {i.description || 'Sans description'}</span>
+              </div>
+            </Link>
+          ))}
         </>
       ) : (
         <>
