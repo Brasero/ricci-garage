@@ -13,7 +13,6 @@
     {
       "binding": "DB",
       "database_name": "ricci-garage",
-      // À remplacer par l'identifiant renvoyé par `npx wrangler d1 create ricci-garage`
       "database_id": "b2880ee0-4a42-4227-b598-3ea2b4b8ed55",
       "migrations_dir": "migrations"
     }
