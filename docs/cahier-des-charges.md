@@ -1,6 +1,6 @@
 # Cahier des charges — Ricci Garage
 
-> **Statut : BROUILLON v0.4 — en attente de validation.** Aucun code n'est écrit tant que ce document n'est pas validé.
+> **Statut : VALIDÉ (v0.4) — jalon 1 réalisé.** Aucun code n'est écrit tant que ce document n'est pas validé.
 > Les points marqués ❓ sont des questions ouvertes (regroupées en section 10). Plus de question bloquante : le document peut être validé.
 
 ## 0. Décisions validées
