@@ -1,14 +1,19 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { fmtDateTime } from '../components/ui'
-import { fullName, restoreClient, setInterventionArchived, setVehicleArchived } from '../repo'
+import { echeanceName } from './AgendaPage'
+import { fullName, restoreClient, setEcheanceArchived, setInterventionArchived, setRdvArchived, setVehicleArchived } from '../repo'
 
 export function TrashPage() {
   const clients = useLiveQuery(() => db.clients.toArray(), [], [])
   const vehicles = useLiveQuery(() => db.vehicles.toArray(), [], [])
   const interventions = useLiveQuery(() => db.interventions.toArray(), [], [])
   const byId = new Map(clients.map((c) => [c.id, c]))
+  const rdvs = useLiveQuery(() => db.rdvs.toArray(), [], [])
+  const echeances = useLiveQuery(() => db.echeances.toArray(), [], [])
   const vById = new Map(vehicles.map((v) => [v.id, v]))
+  const archivedRdvs = rdvs.filter((r) => r.deletedAt && byId.get(r.clientId) && !byId.get(r.clientId)!.deletedAt)
+  const archivedEcheances = echeances.filter((e) => e.deletedAt && vById.get(e.vehicleId) && !vById.get(e.vehicleId)!.deletedAt)
   const archivedInterventions = interventions.filter((i) => i.deletedAt && vById.get(i.vehicleId) && !vById.get(i.vehicleId)!.deletedAt)
   const archivedClients = clients.filter((c) => c.deletedAt)
   // Un véhicule archivé avec son client se restaure avec lui : on ne liste que les autres.
@@ -49,6 +54,28 @@ export function TrashPage() {
         </div>
       ))}
       {archivedInterventions.length === 0 && <p className="empty">Aucune intervention archivée.</p>}
+      <h2>Rendez-vous ({archivedRdvs.length})</h2>
+      {archivedRdvs.map((r) => (
+        <div className="card" key={r.id}>
+          <div className="card-main">
+            <strong>{fmtDateTime(r.startAt)} · {fullName(byId.get(r.clientId))}</strong>
+            <span className="muted">{r.motif || 'Sans motif'}</span>
+          </div>
+          <button className="btn" onClick={() => setRdvArchived(r.id, false)}>Restaurer</button>
+        </div>
+      ))}
+      {archivedRdvs.length === 0 && <p className="empty">Aucun rendez-vous archivé.</p>}
+      <h2>Échéances ({archivedEcheances.length})</h2>
+      {archivedEcheances.map((e) => (
+        <div className="card" key={e.id}>
+          <div className="card-main">
+            <strong>{echeanceName(e)}</strong>
+            <span className="muted">{vById.get(e.vehicleId)!.marque} {vById.get(e.vehicleId)!.modele} · {vById.get(e.vehicleId)!.plate}</span>
+          </div>
+          <button className="btn" onClick={() => setEcheanceArchived(e.id, false)}>Restaurer</button>
+        </div>
+      ))}
+      {archivedEcheances.length === 0 && <p className="empty">Aucune échéance archivée.</p>}
     </>
   )
 }

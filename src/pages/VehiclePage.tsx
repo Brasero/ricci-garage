@@ -5,6 +5,7 @@ import { validatePlate, validateVin, type Country } from '../../shared/plate'
 import { MOTORISATIONS, type Motorisation, type Vehicle } from '../../shared/types'
 import { db, type Row } from '../db'
 import { computeTotals, formatEuros } from '../../shared/money'
+import { echeanceName } from './AgendaPage'
 import { fmtDateTime, StatusBadge } from '../components/ui'
 import { fullName, findVehiclesByPlate, saveVehicle, setVehicleArchived, type VehicleInput } from '../repo'
 import { ClientPicker, Field, PlateBadge, StaleBanner } from '../components/ui'
@@ -51,6 +52,11 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
   const clients = useLiveQuery(() => db.clients.toArray(), [], [])
   const history = useLiveQuery(
     async () => (existing ? (await db.interventions.where('vehicleId').equals(existing.id).filter((i) => !i.deletedAt).toArray()).sort((a, b) => b.startAt - a.startAt) : []),
+    [existing?.id],
+    [],
+  )
+  const echeances = useLiveQuery(
+    async () => (existing ? (await db.echeances.where('vehicleId').equals(existing.id).filter((e) => !e.deletedAt).toArray()).sort((a, b) => (a.dateDue ?? '9999').localeCompare(b.dateDue ?? '9999')) : []),
     [existing?.id],
     [],
   )
@@ -172,6 +178,24 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
         {saved && <p className="ok-msg" role="status">✓ Enregistré</p>}
       </form>
 
+      {existing && (
+        <>
+          <div className="page-head">
+            <h2>Échéances ({echeances.length})</h2>
+            <Link className="btn" to={`/echeances/nouveau?vehicule=${existing.id}`}>+ Échéance</Link>
+          </div>
+          {echeances.map((e) => (
+            <Link key={e.id} to={`/echeances/${e.id}`} className="card clickable">
+              <div className="card-main">
+                <strong>{echeanceName(e)}</strong>
+                <span className="muted">{[e.dateDue ? new Date(`${e.dateDue}T12:00:00`).toLocaleDateString('fr-FR') : '', e.kmDue != null ? `${e.kmDue.toLocaleString('fr-FR')} km` : ''].filter(Boolean).join(' · ')}</span>
+              </div>
+              {e.statut === 'faite' ? <span className="status terminee">Faite</span> : <span className="status en_cours">À faire</span>}
+            </Link>
+          ))}
+          {echeances.length === 0 && <p className="empty">Aucune échéance (contrôle technique, vidange…).</p>}
+        </>
+      )}
       {existing && (
         <>
           <div className="page-head">

@@ -1,6 +1,6 @@
 const enc = new TextEncoder()
 export const SESSION_COOKIE = 'rg_session'
-export const SESSION_MAX_AGE = 60 * 60 * 24 * 90 // 90 jours
+export const SESSION_MAX_AGE = 60 * 60 * 24 * 30 // 30 jours
 
 function toHex(buf: ArrayBuffer): string {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')

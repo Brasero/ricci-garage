@@ -1,7 +1,8 @@
 import { formatPlate, normalizePlate } from '../shared/plate'
 import { normalizePhone } from '../shared/phone'
 import { normalizeText } from '../shared/text'
-import type { Client, Intervention, Vehicle } from '../shared/types'
+import { SETTINGS_ID, withDefaults } from '../shared/settings'
+import type { Client, Echeance, Intervention, RendezVous, Settings, Vehicle } from '../shared/types'
 import { db, type PhotoRow, type Row } from './db'
 import { requestSync } from './sync'
 
@@ -10,7 +11,7 @@ export const newId = (): string => crypto.randomUUID()
 /** Garantit un horodatage strictement croissant pour un même enregistrement. */
 const stamp = (prev?: { updatedAt: number }): number => Math.max(Date.now(), (prev?.updatedAt ?? 0) + 1)
 
-export type ClientInput = Pick<Client, 'nom' | 'prenom' | 'telephone' | 'email' | 'notes'>
+export type ClientInput = Pick<Client, 'nom' | 'prenom' | 'telephone' | 'email' | 'notes' | 'rappelsEmail'>
 export type VehicleInput = Pick<
   Vehicle,
   'clientId' | 'marque' | 'modele' | 'motorisation' | 'motorisationDetail' | 'country' | 'couleur' | 'miseEnCirculation' | 'vin' | 'km' | 'dernierCT' | 'notes'
@@ -180,5 +181,94 @@ export async function deletePhoto(id: string): Promise<void> {
   const p = await db.photos.get(id)
   if (!p) return
   await db.photos.put({ ...p, deletedAt: stamp(p), updatedAt: stamp(p), dirty: 1 })
+  requestSync()
+}
+
+// ───────────── Rendez-vous ─────────────
+
+export type RdvInput = Pick<RendezVous, 'clientId' | 'vehicleId' | 'startAt' | 'dureeMin' | 'motif' | 'statut' | 'notes'>
+
+export async function saveRdv(input: RdvInput, existing?: Row<RendezVous>): Promise<string> {
+  const now = stamp(existing)
+  const row: Row<RendezVous> = {
+    ...input,
+    motif: input.motif.trim(),
+    interventionId: existing?.interventionId ?? null,
+    id: existing?.id ?? newId(),
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+    deletedAt: existing?.deletedAt ?? null,
+    dirty: 1,
+  }
+  await db.rdvs.put(row)
+  requestSync()
+  return row.id
+}
+
+export async function setRdvArchived(id: string, archived: boolean): Promise<void> {
+  const r = await db.rdvs.get(id)
+  if (!r) return
+  const now = stamp(r)
+  await db.rdvs.put({ ...r, deletedAt: archived ? now : null, updatedAt: now, dirty: 1 })
+  requestSync()
+}
+
+/** Rendez-vous prévus qui chevauchent la plage donnée (avertissement, jamais bloquant). */
+export async function findRdvConflicts(startAt: number, dureeMin: number, selfId?: string): Promise<Row<RendezVous>[]> {
+  const end = startAt + dureeMin * 60_000
+  const near = await db.rdvs.where('startAt').between(startAt - 24 * 3600_000, end, true, false).toArray()
+  return near.filter((r) => r.id !== selfId && !r.deletedAt && r.statut === 'prevu' && r.startAt < end && r.startAt + r.dureeMin * 60_000 > startAt)
+}
+
+/** Lie un rendez-vous à l'intervention créée à partir de lui, et le marque « honoré ». */
+export async function linkRdvToIntervention(rdvId: string, interventionId: string): Promise<void> {
+  const r = await db.rdvs.get(rdvId)
+  if (!r || r.interventionId === interventionId) return
+  await db.rdvs.put({ ...r, interventionId, statut: 'honore', updatedAt: stamp(r), dirty: 1 })
+  requestSync()
+}
+
+// ───────────── Échéances ─────────────
+
+export type EcheanceInput = Pick<Echeance, 'vehicleId' | 'type' | 'libelle' | 'dateDue' | 'kmDue' | 'statut' | 'notes'> & { sourceInterventionId?: string | null }
+
+export async function saveEcheance(input: EcheanceInput, existing?: Row<Echeance>): Promise<string> {
+  const now = stamp(existing)
+  const row: Row<Echeance> = {
+    ...input,
+    libelle: input.libelle.trim(),
+    sourceInterventionId: input.sourceInterventionId ?? existing?.sourceInterventionId ?? null,
+    id: existing?.id ?? newId(),
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+    deletedAt: existing?.deletedAt ?? null,
+    dirty: 1,
+  }
+  await db.echeances.put(row)
+  requestSync()
+  return row.id
+}
+
+export async function setEcheanceArchived(id: string, archived: boolean): Promise<void> {
+  const e = await db.echeances.get(id)
+  if (!e) return
+  const now = stamp(e)
+  await db.echeances.put({ ...e, deletedAt: archived ? now : null, updatedAt: now, dirty: 1 })
+  requestSync()
+}
+
+export async function setEcheanceDone(id: string, done: boolean): Promise<void> {
+  const e = await db.echeances.get(id)
+  if (!e) return
+  await db.echeances.put({ ...e, statut: done ? 'faite' : 'ouverte', updatedAt: stamp(e), dirty: 1 })
+  requestSync()
+}
+
+// ───────────── Réglages ─────────────
+
+export async function saveSettings(patch: Partial<Settings>): Promise<void> {
+  const existing = await db.settings.get(SETTINGS_ID)
+  const now = stamp(existing)
+  await db.settings.put({ ...withDefaults(existing), ...patch, id: SETTINGS_ID, createdAt: existing?.createdAt ?? now, updatedAt: now, deletedAt: null, dirty: 1 })
   requestSync()
 }

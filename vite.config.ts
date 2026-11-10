@@ -7,6 +7,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Le manifeste est lui aussi derrière le code : le navigateur doit donc le demander avec le cookie.
+      useCredentials: true,
       includeAssets: ['icon-192.png', 'icon-512.png'],
       manifest: {
         name: 'Ricci Garage',

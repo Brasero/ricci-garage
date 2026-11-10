@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import type { Client, Vehicle } from '../../shared/types'
 import { db } from '../db'
 import { exportAll, importAll } from '../backup'
+import { ReminderSettings } from '../components/ReminderSettings'
 import { logout, syncNow, useSyncState } from '../sync'
 
 const LABEL = { idle: 'À jour', syncing: 'Synchronisation…', offline: 'Hors connexion', unauthorized: 'Connexion requise', error: 'Erreur' } as const
@@ -17,7 +18,12 @@ export function SettingsPage() {
       clients: await db.clients.filter((c) => !c.deletedAt).count(),
       vehicles: await db.vehicles.filter((v) => !v.deletedAt).count(),
       interventions: await db.interventions.filter((i) => !i.deletedAt).count(),
-      trash: (await db.clients.filter((c) => !!c.deletedAt).count()) + (await db.vehicles.filter((v) => !!v.deletedAt).count()) + (await db.interventions.filter((i) => !!i.deletedAt).count()),
+      trash:
+        (await db.clients.filter((c) => !!c.deletedAt).count()) +
+        (await db.vehicles.filter((v) => !!v.deletedAt).count()) +
+        (await db.interventions.filter((i) => !!i.deletedAt).count()) +
+        (await db.rdvs.filter((r) => !!r.deletedAt).count()) +
+        (await db.echeances.filter((e) => !!e.deletedAt).count()),
     }),
     [],
     { clients: 0, vehicles: 0, interventions: 0, trash: 0 },
@@ -54,6 +60,8 @@ export function SettingsPage() {
         <button className="btn" onClick={() => void syncNow()}>Synchroniser maintenant</button>
         {sync.status === 'unauthorized' ? <Link className="btn primary" to="/connexion">Se connecter</Link> : <button className="btn" onClick={() => void logout()}>Se déconnecter</button>}
       </div>
+
+      <ReminderSettings />
 
       <h2>Données</h2>
       <p>{counts.clients} client(s) · {counts.vehicles} véhicule(s) · {counts.interventions} intervention(s) · <Link to="/corbeille">corbeille ({counts.trash})</Link></p>
