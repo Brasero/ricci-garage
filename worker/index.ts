@@ -2,17 +2,21 @@ import { Hono } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { serverAccepts } from '../shared/sync'
 import type { RecordKind, SyncChange, SyncRequest, SyncResponse } from '../shared/types'
+import { sniffImage } from './photos'
 import { SESSION_COOKIE, SESSION_MAX_AGE, createSession, safeEqual, verifySession } from './auth'
 
 interface Env {
   DB: D1Database
+  /** Bucket R2 des photos (images compressées, ≤ 1 Mo). */
+  PHOTOS: R2Bucket
   /** Mot de passe de l'application (secret Cloudflare). */
   APP_PASSWORD: string
   /** Clé de signature des sessions (secret Cloudflare, longue chaîne aléatoire). */
   SESSION_SECRET: string
 }
 
-const KINDS: RecordKind[] = ['client', 'vehicle']
+const KINDS: RecordKind[] = ['client', 'vehicle', 'intervention', 'photo']
+const MAX_PHOTO_BYTES = 1_500_000
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const MAX_DATA_BYTES = 20_000
 const MAX_CHANGES_PER_REQUEST = 200
@@ -140,6 +144,36 @@ app.post('/api/sync', async (c) => {
     hasMore,
   }
   return c.json(res)
+})
+
+app.put('/api/photos/:id', async (c) => {
+  const id = c.req.param('id')
+  if (!UUID.test(id)) return c.json({ error: 'bad_id' }, 400)
+  const declared = Number(c.req.header('content-length') ?? 0)
+  if (declared > MAX_PHOTO_BYTES) return c.json({ error: 'too_large' }, 413)
+  const buf = await c.req.arrayBuffer()
+  if (buf.byteLength === 0) return c.json({ error: 'empty' }, 400)
+  if (buf.byteLength > MAX_PHOTO_BYTES) return c.json({ error: 'too_large' }, 413)
+  const mime = sniffImage(new Uint8Array(buf, 0, Math.min(16, buf.byteLength)))
+  if (!mime) return c.json({ error: 'not_an_image' }, 415)
+  const key = `photos/${id}`
+  // Les photos sont immuables : si elle existe déjà (envoi répété), rien à refaire.
+  if (!(await c.env.PHOTOS.head(key))) await c.env.PHOTOS.put(key, buf, { httpMetadata: { contentType: mime } })
+  return c.json({ ok: true })
+})
+
+app.get('/api/photos/:id', async (c) => {
+  const id = c.req.param('id')
+  if (!UUID.test(id)) return c.json({ error: 'bad_id' }, 400)
+  const obj = await c.env.PHOTOS.get(`photos/${id}`)
+  if (!obj) return c.json({ error: 'not_found' }, 404)
+  return new Response(obj.body, {
+    headers: {
+      'Content-Type': obj.httpMetadata?.contentType ?? 'application/octet-stream',
+      'Cache-Control': 'private, max-age=31536000, immutable',
+      'X-Content-Type-Options': 'nosniff',
+    },
+  })
 })
 
 app.notFound((c) => c.json({ error: 'not_found' }, 404))

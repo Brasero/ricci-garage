@@ -1,7 +1,7 @@
 import { normalizePlate } from './plate'
 import { normalizePhone } from './phone'
 import { normalizeText, tokenize } from './text'
-import type { Client, Vehicle } from './types'
+import type { Client, Intervention, Vehicle } from './types'
 
 export interface VehicleHit {
   vehicle: Vehicle
@@ -61,4 +61,35 @@ export function searchAll(
 
   const byScore = <T extends { score: number }>(a: T, b: T) => b.score - a.score
   return { vehicles: vehicleHits.sort(byScore), clients: clientHits.sort(byScore) }
+}
+
+export interface InterventionHit {
+  intervention: Intervention
+  vehicle: Vehicle
+  owner: Client
+  score: number
+}
+
+/** Recherche dans le texte des interventions (type, description, pièces) et dans les infos du véhicule/propriétaire. */
+export function searchInterventions(query: string, interventions: Intervention[], vehicles: Vehicle[], clients: Client[]): InterventionHit[] {
+  const tokens = tokenize(query)
+  if (!tokens.length) return []
+  const owners = new Map(clients.filter((c) => !c.deletedAt).map((c) => [c.id, c]))
+  const cars = new Map(vehicles.filter((v) => !v.deletedAt).map((v) => [v.id, v]))
+  const hits: InterventionHit[] = []
+  for (const i of interventions) {
+    if (i.deletedAt) continue
+    const vehicle = cars.get(i.vehicleId)
+    const owner = vehicle && owners.get(vehicle.clientId)
+    if (!vehicle || !owner) continue
+    const words = [
+      ...tokenize(`${i.type} ${i.description} ${i.notes}`),
+      ...i.pieces.flatMap((p) => tokenize(`${p.designation} ${p.reference}`)),
+      ...tokenize(`${vehicle.marque} ${vehicle.modele} ${owner.nom} ${owner.prenom}`),
+    ]
+    const hay = `${vehicle.plateNorm.toLowerCase()} ${words.join(' ')}`
+    const s = score(tokens, hay, [vehicle.plateNorm.toLowerCase(), ...words])
+    if (s) hits.push({ intervention: i, vehicle, owner, score: s })
+  }
+  return hits.sort((a, b) => b.score - a.score || b.intervention.startAt - a.intervention.startAt)
 }

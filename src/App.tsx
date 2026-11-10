@@ -3,6 +3,8 @@ import { Layout } from './components/Layout'
 import { ClientPage } from './pages/ClientPage'
 import { ClientsPage } from './pages/ClientsPage'
 import { HomePage } from './pages/HomePage'
+import { InterventionPage } from './pages/InterventionPage'
+import { InterventionsPage } from './pages/InterventionsPage'
 import { LoginPage } from './pages/LoginPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { TrashPage } from './pages/TrashPage'
@@ -21,6 +23,9 @@ export function App() {
           <Route path="vehicules" element={<VehiclesPage />} />
           <Route path="vehicules/nouveau" element={<VehiclePage />} />
           <Route path="vehicules/:id" element={<VehiclePage />} />
+          <Route path="interventions" element={<InterventionsPage />} />
+          <Route path="interventions/nouveau" element={<InterventionPage />} />
+          <Route path="interventions/:id" element={<InterventionPage />} />
           <Route path="corbeille" element={<TrashPage />} />
           <Route path="parametres" element={<SettingsPage />} />
           <Route path="connexion" element={<LoginPage />} />

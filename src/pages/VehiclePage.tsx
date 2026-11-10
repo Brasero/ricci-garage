@@ -4,6 +4,8 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { validatePlate, validateVin, type Country } from '../../shared/plate'
 import { MOTORISATIONS, type Motorisation, type Vehicle } from '../../shared/types'
 import { db, type Row } from '../db'
+import { computeTotals, formatEuros } from '../../shared/money'
+import { fmtDateTime, StatusBadge } from '../components/ui'
 import { fullName, findVehiclesByPlate, saveVehicle, setVehicleArchived, type VehicleInput } from '../repo'
 import { ClientPicker, Field, PlateBadge, StaleBanner } from '../components/ui'
 import { useStaleGuard } from '../useStaleGuard'
@@ -47,6 +49,11 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
   const [dupes, setDupes] = useState<Row<Vehicle>[]>([])
   const [saved, setSaved] = useState(false)
   const clients = useLiveQuery(() => db.clients.toArray(), [], [])
+  const history = useLiveQuery(
+    async () => (existing ? (await db.interventions.where('vehicleId').equals(existing.id).filter((i) => !i.deletedAt).toArray()).sort((a, b) => b.startAt - a.startAt) : []),
+    [existing?.id],
+    [],
+  )
   const nameOf = (cid: string) => fullName(clients.find((c) => c.id === cid))
 
   const patch = <K extends keyof VehicleInput>(k: K, v: VehicleInput[K]) => {
@@ -165,6 +172,27 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
         {saved && <p className="ok-msg" role="status">✓ Enregistré</p>}
       </form>
 
+      {existing && (
+        <>
+          <div className="page-head">
+            <h2>Historique ({history.length})</h2>
+            <Link className="btn primary" to={`/interventions/nouveau?vehicule=${existing.id}`}>+ Nouvelle intervention</Link>
+          </div>
+          {history.map((i) => (
+            <Link key={i.id} to={`/interventions/${i.id}`} className="card clickable">
+              <div className="card-main">
+                <strong>{fmtDateTime(i.startAt)}{i.km != null ? ` · ${i.km.toLocaleString('fr-FR')} km` : ''}</strong>
+                <span className="muted">{i.description || 'Sans description'}</span>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <StatusBadge statut={i.statut} />
+                <div>{formatEuros(computeTotals(i.pieces, i.mainOeuvreCts).totalCts)}</div>
+              </div>
+            </Link>
+          ))}
+          {history.length === 0 && <p className="empty">Aucune intervention pour ce véhicule.</p>}
+        </>
+      )}
       {existing && existing.ownerHistory.length > 0 && (
         <>
           <h2>Anciens propriétaires</h2>

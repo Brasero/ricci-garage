@@ -110,3 +110,66 @@ describe('fusion', () => {
     expect(deviceAccepts({ updatedAt: 9, dirty: 0 }, 5)).toBe(true)
   })
 })
+
+import { computeTotals, eurosToInput, formatDuree, formatEuros, parseEuros } from '../shared/money'
+import { searchInterventions } from '../shared/search'
+import type { Intervention } from '../shared/types'
+
+describe('montants', () => {
+  it('lit les euros en centimes', () => {
+    expect(parseEuros('12,50')).toBe(1250)
+    expect(parseEuros('12.5')).toBe(1250)
+    expect(parseEuros('1 200,5 €')).toBe(120050)
+    expect(parseEuros('0,1')).toBe(10)
+    expect(parseEuros('')).toBeNull()
+    expect(parseEuros('abc')).toBeNull()
+    expect(parseEuros('-5')).toBeNull()
+    expect(parseEuros('1,234')).toBeNull()
+  })
+  it('affiche', () => {
+    expect(eurosToInput(1250)).toBe('12,50')
+    expect(eurosToInput(null)).toBe('')
+    expect(formatEuros(1250).replace(/\s/g, ' ')).toMatch(/12,50 €/)
+  })
+  it('calcule totaux et marge (pièces à la vente + main d’œuvre libre)', () => {
+    const t = computeTotals(
+      [
+        { designation: 'Filtre', reference: 'F1', quantite: 1, prixAchatCts: 800, prixVenteCts: 1500 },
+        { designation: 'Huile', reference: '', quantite: 4.5, prixAchatCts: 900, prixVenteCts: 1400 },
+      ],
+      6000,
+    )
+    expect(t.piecesVenteCts).toBe(1500 + 6300)
+    expect(t.piecesAchatCts).toBe(800 + 4050)
+    expect(t.margePiecesCts).toBe(7800 - 4850)
+    expect(t.totalCts).toBe(7800 + 6000)
+    expect(computeTotals([], null).totalCts).toBe(0)
+  })
+  it('durée', () => {
+    expect(formatDuree(135)).toBe('2 h 15')
+    expect(formatDuree(45)).toBe('45 min')
+    expect(formatDuree(120)).toBe('2 h')
+    expect(formatDuree(null)).toBe('—')
+  })
+})
+
+describe('recherche interventions', () => {
+  const inter = (id: string, vehicleId: string, description: string, piece = ''): Intervention => ({
+    id, vehicleId, startAt: 1, dureeMin: null, km: null, type: 'vidange', description,
+    pieces: piece ? [{ designation: piece, reference: '', quantite: 1, prixAchatCts: 0, prixVenteCts: 0 }] : [],
+    mainOeuvreCts: null, statut: 'terminee', notes: '', createdAt: 1, updatedAt: 1, deletedAt: null,
+  })
+  const cs = [client('c1', 'Dupont', 'Éloïse')]
+  const vs = [vehicle('v1', 'c1', 'Volkswagen', 'Golf', 'AB-123-CD')]
+  it('trouve par description, pièce et véhicule', () => {
+    const list = [inter('i1', 'v1', 'Remplacement courroie', 'Kit distribution'), inter('i2', 'v1', 'Vidange moteur')]
+    const ids = (q: string) => searchInterventions(q, list, vs, cs).map((h) => h.intervention.id)
+    expect(ids('courroie')).toEqual(['i1'])
+    expect(ids('distribution')).toEqual(['i1'])
+    expect(ids('moteur golf')).toEqual(['i2'])
+    expect(ids('ab123cd').sort()).toEqual(['i1', 'i2'])
+  })
+  it('ignore archivés', () => {
+    expect(searchInterventions('golf', [{ ...inter('i1', 'v1', 'x'), deletedAt: 3 }], vs, cs)).toEqual([])
+  })
+})

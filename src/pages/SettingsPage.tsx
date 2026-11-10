@@ -16,10 +16,11 @@ export function SettingsPage() {
     async () => ({
       clients: await db.clients.filter((c) => !c.deletedAt).count(),
       vehicles: await db.vehicles.filter((v) => !v.deletedAt).count(),
-      trash: (await db.clients.filter((c) => !!c.deletedAt).count()) + (await db.vehicles.filter((v) => !!v.deletedAt).count()),
+      interventions: await db.interventions.filter((i) => !i.deletedAt).count(),
+      trash: (await db.clients.filter((c) => !!c.deletedAt).count()) + (await db.vehicles.filter((v) => !!v.deletedAt).count()) + (await db.interventions.filter((i) => !!i.deletedAt).count()),
     }),
     [],
-    { clients: 0, vehicles: 0, trash: 0 },
+    { clients: 0, vehicles: 0, interventions: 0, trash: 0 },
   )
 
   async function doExport() {
@@ -55,13 +56,14 @@ export function SettingsPage() {
       </div>
 
       <h2>Données</h2>
-      <p>{counts.clients} client(s) · {counts.vehicles} véhicule(s) · <Link to="/corbeille">corbeille ({counts.trash})</Link></p>
+      <p>{counts.clients} client(s) · {counts.vehicles} véhicule(s) · {counts.interventions} intervention(s) · <Link to="/corbeille">corbeille ({counts.trash})</Link></p>
       <div className="actions">
         <button className="btn" onClick={() => void doExport()}>⬇️ Exporter une sauvegarde</button>
         <button className="btn" onClick={() => fileRef.current?.click()}>⬆️ Importer une sauvegarde</button>
         <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => e.target.files?.[0] && void doImport(e.target.files[0])} />
       </div>
       {msg && <p role="status">{msg}</p>}
+      <p className="muted">La sauvegarde JSON ne contient pas les photos (elles sont conservées sur le serveur).</p>
       <p className="muted">Les données sont enregistrées sur cet appareil puis synchronisées. Le serveur conserve en plus un historique de restauration.</p>
     </>
   )
