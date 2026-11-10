@@ -91,16 +91,31 @@ async function uploadPhotos(): Promise<boolean> {
   return true
 }
 
-let running = false
+let inflight: Promise<void> | null = null
 let rerun = false
 
-/** Envoie les modifications locales, puis récupère celles des autres appareils. Ne lève jamais d'exception. */
-export async function syncNow(): Promise<void> {
-  if (running) {
+/**
+ * Envoie les modifications locales, puis récupère celles des autres appareils. Ne lève jamais d'exception.
+ * Si une synchro est déjà en cours, la promesse renvoyée ne se résout qu'APRÈS un passage complémentaire :
+ * l'appelant peut donc compter sur le fait que ses modifications ont été envoyées.
+ */
+export function syncNow(): Promise<void> {
+  if (inflight) {
     rerun = true
-    return
+    return inflight
   }
-  running = true
+  inflight = (async () => {
+    do {
+      rerun = false
+      await syncPass()
+    } while (rerun)
+  })().finally(() => {
+    inflight = null
+  })
+  return inflight
+}
+
+async function syncPass(): Promise<void> {
   try {
     if (!navigator.onLine) {
       setState({ status: 'offline' })
@@ -159,12 +174,6 @@ export async function syncNow(): Promise<void> {
   } catch (e) {
     console.error('sync', e)
     setState({ status: 'error' })
-  } finally {
-    running = false
-    if (rerun) {
-      rerun = false
-      void syncNow()
-    }
   }
 }
 

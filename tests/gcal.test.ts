@@ -22,11 +22,10 @@ describe('événements Google', () => {
     expect(a).toMatch(/^[a-v0-9]{5,}$/)
     expect(eventIdFor('inter', UUID(3))).not.toBe(a)
   })
-  it('rendez-vous : horaires, durée, fuseau, rappels (24 h et 1 h avant)', () => {
+  it('rendez-vous : horaires, durée, fuseau', () => {
     const [d] = buildDesired(input({ rdvs: [rdv()] })).desired
     expect(d.event.start).toEqual({ dateTime: new Date(NOW + 86_400_000).toISOString(), timeZone: 'Europe/Luxembourg' })
     expect(new Date(d.event.end.dateTime!).getTime() - new Date(d.event.start.dateTime!).getTime()).toBe(90 * 60_000)
-    expect(d.event.reminders.overrides).toEqual([{ method: 'popup', minutes: 60 }, { method: 'popup', minutes: 1440 }])
     expect(d.event.summary).toContain('Anne Dupont')
     expect(d.event.description).toContain('0612345678')
   })
@@ -34,12 +33,15 @@ describe('événements Google', () => {
     const [d] = buildDesired(input({ interventions: [inter()] })).desired
     expect(JSON.stringify(d.event)).not.toMatch(/15,00|60,00|1500|6000|€/)
   })
-  it("échéance : événement « toute la journée » avec rappels depuis l'heure d'envoi, plafonnés à 4 semaines", () => {
+  it('échéance : événement « toute la journée »', () => {
     const [d] = buildDesired(input({ echeances: [ech()] })).desired
     expect(d.event.start).toEqual({ date: '2026-12-15' })
     expect(d.event.end).toEqual({ date: '2026-12-16' })
-    // 7 jours avant à 8 h = 7×1440 − 480 ; 30 jours dépasse les 40 320 min autorisées → ignoré
-    expect(d.event.reminders.overrides).toEqual([{ method: 'popup', minutes: 7 * 1440 - 480 }])
+  })
+  it("n'impose aucun rappel : les alertes dépendent des notifications de l'agenda chez l'utilisateur, jamais du compte de service", () => {
+    const evs = buildDesired(input({ rdvs: [rdv()], interventions: [inter()], echeances: [ech()], settings: { ...DEFAULT_SETTINGS, delaisRdvMin: [1, 2, 3, 4, 5, 6], delaisEcheanceJours: [0, 1, 2, 3, 4, 5] } })).desired
+    expect(evs).toHaveLength(3)
+    for (const d of evs) expect('reminders' in d.event).toBe(false)
   })
   it('exclut annulés, archivés, échéances faites, clients archivés', () => {
     const none = (o: Partial<GcalInput>) => buildDesired(input(o)).desired.length

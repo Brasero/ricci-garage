@@ -6,6 +6,10 @@ import { ECHEANCE_TYPES, INTERVENTION_TYPES } from './types'
 /**
  * Synchronisation à sens unique vers Google Agenda : application → Google.
  * Ici, la partie pure (quels événements, quelles opérations) ; les appels réseau sont dans worker/gcal.ts.
+ *
+ * Pas de rappels dans les événements : dans Google, un rappel appartient à l'utilisateur qui l'enregistre, et l'application
+ * écrit avec un compte de service (pas avec le compte de la personne qui consulte l'agenda). Les alertes sur le téléphone
+ * viennent donc des notifications par défaut que cette personne règle sur l'agenda dans son propre Google Agenda.
  */
 
 export interface GEvent {
@@ -14,7 +18,6 @@ export interface GEvent {
   start: { dateTime?: string; date?: string; timeZone?: string }
   end: { dateTime?: string; date?: string; timeZone?: string }
   colorId: string
-  reminders: { useDefault: false; overrides: { method: 'popup'; minutes: number }[] }
   extendedProperties: { private: { rg: string } }
 }
 
@@ -37,8 +40,6 @@ export interface GcalInput {
 
 /** Au-delà de cet âge, un événement n'est plus modifié ni supprimé (l'historique ancien reste tel quel dans Google). */
 export const WINDOW_DAYS = 30
-/** Google refuse les rappels de plus de 4 semaines. */
-const MAX_REMINDER_MIN = 40_320
 
 /** Identifiant d'événement Google : caractères a-v et 0-9 uniquement (un UUID sans tirets convient). */
 export function eventIdFor(kind: 'rdv' | 'inter' | 'echeance', recordId: string): string {
@@ -63,10 +64,6 @@ export function hashEvent(e: unknown): string {
 
 const fullName = (c: Pick<Client, 'nom' | 'prenom'>) => `${c.prenom} ${c.nom}`.trim()
 const carLabel = (v: Vehicle) => `${v.marque} ${v.modele} (${v.plate})`
-const popups = (mins: number[]) => ({
-  useDefault: false as const,
-  overrides: [...new Set(mins)].filter((m) => m >= 0 && m <= MAX_REMINDER_MIN).sort((a, b) => a - b).map((minutes) => ({ method: 'popup' as const, minutes })),
-})
 
 function dateTime(ms: number) {
   return { dateTime: new Date(ms).toISOString(), timeZone: TIMEZONE }
@@ -79,7 +76,7 @@ export interface BuildResult {
 }
 
 export function buildDesired(i: GcalInput): BuildResult {
-  const { now, settings: s } = i
+  const { now } = i
   const clients = new Map(i.clients.filter((c) => !c.deletedAt).map((c) => [c.id, c]))
   const cars = new Map(i.vehicles.filter((v) => !v.deletedAt && clients.has(v.clientId)).map((v) => [v.id, v]))
   const minStart = now - WINDOW_DAYS * 86_400_000
@@ -104,7 +101,6 @@ export function buildDesired(i: GcalInput): BuildResult {
       start: dateTime(r.startAt),
       end: dateTime(r.startAt + Math.max(5, r.dureeMin) * 60_000),
       colorId: '9',
-      reminders: popups(s.delaisRdvMin),
       extendedProperties: { private: { rg: r.id } },
     })
   }
@@ -126,7 +122,6 @@ export function buildDesired(i: GcalInput): BuildResult {
       start: dateTime(it.startAt),
       end: dateTime(it.startAt + (it.dureeMin && it.dureeMin >= 5 ? it.dureeMin : 60) * 60_000),
       colorId: it.statut === 'terminee' ? '8' : '10',
-      reminders: popups(s.delaisRdvMin),
       extendedProperties: { private: { rg: it.id } },
     })
   }
@@ -140,15 +135,12 @@ export function buildDesired(i: GcalInput): BuildResult {
     }
     const c = clients.get(car.clientId)!
     const label = e.type === 'autre' ? e.libelle || 'Échéance' : ECHEANCE_TYPES.find((t) => t[0] === e.type)![1] + (e.libelle ? ` (${e.libelle})` : '')
-    // Rappels d'un événement « toute la journée » : minutes avant 00:00 du jour J (ex. 7 jours avant à 8 h = 7×1440 − 480).
-    const mins = s.delaisEcheanceJours.map((d) => d * 1440 - s.heureEnvoi * 60)
     add(e.id, 'echeance', {
       summary: `⏰ ${label} — ${carLabel(car)}`,
       description: [`Échéance : ${label}`, `Client : ${fullName(c)}`, `Téléphone : ${c.telephone}`, `Véhicule : ${carLabel(car)}`, e.notes ? `Notes : ${e.notes}` : ''].filter(Boolean).join('\n'),
       start: { date: e.dateDue },
       end: { date: addDays(e.dateDue, 1) },
       colorId: '6',
-      reminders: popups(mins),
       extendedProperties: { private: { rg: e.id } },
     })
   }

@@ -5,6 +5,7 @@ import { validateEmail } from '../../shared/phone'
 import type { Settings } from '../../shared/types'
 import { db } from '../db'
 import { saveSettings } from '../repo'
+import { syncNow, useSyncState } from '../sync'
 import { Field } from './ui'
 
 const toList = (s: string, scale: number): number[] | null => {
@@ -75,19 +76,22 @@ interface GcalStatus {
   lastRun: { at: number; saved: number; removed: number; failed: number; remaining: number; error?: string } | null
 }
 
-function GoogleStatus() {
+function GoogleStatus({ localCalendarId }: { localCalendarId: string }) {
   const [st, setSt] = useState<GcalStatus | 'offline' | null>(null)
+  const { lastSync } = useSyncState()
   const [busy, setBusy] = useState(false)
   const load = () =>
     fetch('/api/gcal/status')
       .then((r) => (r.ok ? (r.json() as Promise<GcalStatus>) : Promise.reject(r.status)))
       .then(setSt)
       .catch(() => setSt('offline'))
-  useEffect(() => void load(), [])
+  // Rechargé au chargement, puis à chaque synchronisation de l'application (ex. l'identifiant d'agenda vient d'arriver sur le serveur).
+  useEffect(() => void load(), [lastSync])
 
-  async function syncNow() {
+  async function syncGoogle() {
     setBusy(true)
     try {
+      await syncNow() // envoie d'abord les réglages enregistrés (identifiant d'agenda) au serveur
       await fetch('/api/gcal/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
     } finally {
       setBusy(false)
@@ -109,7 +113,8 @@ function GoogleStatus() {
               ✓ Compte de service configuré. Partagez votre agenda Google avec <strong>{st.serviceAccountEmail}</strong> (permission « Apporter des modifications aux événements »).
             </p>
           )}
-          {st.configured && !st.calendarId && <p className="muted">Renseignez l'identifiant de l'agenda ci-dessus pour activer la synchronisation.</p>}
+          {st.configured && !localCalendarId && <p className="muted">Renseignez l'identifiant de l'agenda ci-dessus pour activer la synchronisation.</p>}
+          <p className="muted">Pour être alerté sur le téléphone : dans Google Agenda (compte de la personne concernée) → Paramètres de l'agenda → <em>Notifications des événements</em> (et <em>…toute la journée</em>) → ajouter les alertes voulues. Les rappels ne se règlent pas depuis l'application : dans Google, ils sont propres à chaque utilisateur.</p>
           {st.lastRun && (
             <p className="muted">
               Dernière synchronisation : {new Date(st.lastRun.at).toLocaleString('fr-FR')} — {st.lastRun.saved} envoyé(s), {st.lastRun.removed} supprimé(s){st.lastRun.failed ? `, ${st.lastRun.failed} échec(s)` : ''}
@@ -118,8 +123,8 @@ function GoogleStatus() {
             </p>
           )}
           <div className="actions">
-            <button type="button" className="btn" disabled={busy || !st.configured || !st.calendarId} onClick={() => void syncNow()}>
-              🔄 {busy ? 'Synchronisation…' : 'Synchroniser maintenant'}
+            <button type="button" className="btn" disabled={busy || !st.configured || !localCalendarId} onClick={() => void syncGoogle()}>
+              🔄 {busy ? 'Synchronisation…' : 'Synchroniser Google Agenda'}
             </button>
           </div>
         </>
@@ -207,7 +212,7 @@ export function ReminderSettings() {
       {/* Pas de `key` sur updatedAt : le formulaire ne doit pas se recréer (et perdre son message « Enregistré ») à chaque sauvegarde. */}
       <Form initial={s} />
       <Status />
-      <GoogleStatus />
+      <GoogleStatus localCalendarId={s.googleCalendarId} />
     </>
   )
 }

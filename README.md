@@ -43,7 +43,9 @@ Si le test échoue avec Gmail, c'est la seule partie non vérifiable hors ligne 
 
 ## Google Agenda (application → Google, sens unique)
 
-Les rendez-vous, interventions et échéances datées sont envoyés dans un agenda Google : ton père les voit (et reçoit les rappels natifs) dans l'application Google Agenda de son téléphone. Un cron (toutes les 15 min, décalé de 5 min par rapport aux rappels) n'envoie que ce qui a changé ; annuler/archiver un élément le retire de Google. **Rien n'est jamais lu depuis Google.**
+Les rendez-vous, interventions et échéances datées sont envoyés dans un agenda Google : ton père les voit dans l'application Google Agenda de son téléphone. Un cron (toutes les 15 min, décalé de 5 min par rapport aux rappels) n'envoie que ce qui a changé ; annuler/archiver un élément le retire de Google. **Rien n'est jamais lu depuis Google.**
+
+**Alertes sur le téléphone** : l'application écrit dans l'agenda avec le compte de service, pas avec le compte de ton père ; or, dans Google, un rappel appartient à l'utilisateur qui le configure. Les événements ne portent donc aucun rappel : ton père règle les alertes dans **son** Google Agenda (*Paramètres de l'agenda* → *Notifications des événements* et *Notifications des événements toute la journée*). Les rappels par email de l'application, eux, sont indépendants et réglables dans les Réglages.
 
 Contenu des événements : client, téléphone, véhicule, motif/travaux, notes. **Jamais de prix ni de pièces.** Ces données personnelles sont donc aussi stockées chez Google : à ne faire que si c'est acceptable pour les clients.
 
