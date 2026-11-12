@@ -344,7 +344,8 @@ p { margin: 0 0 0.6rem; }
 .piece input:focus { outline: none; border-color: var(--primary); box-shadow: var(--ring); }
 .piece .btn { min-height: 44px; margin: 0; padding: 0 12px; flex: none; }
 .totals { display: grid; gap: 6px; padding: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-ctl); font-variant-numeric: tabular-nums; }
-.totals div { display: flex; justify-content: space-between; gap: 12px; }
+.totals div { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 12px; }
+.totals div > span:last-child { margin-left: auto; text-align: right; overflow-wrap: anywhere; }
 .totals .grand { font-weight: 750; font-size: 1.2rem; border-top: 1px solid var(--border-strong); padding-top: 8px; margin-top: 4px; letter-spacing: -0.01em; }
 
 .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
@@ -387,7 +388,7 @@ p { margin: 0 0 0.6rem; }
 .fact:last-child:nth-child(odd) { grid-column: 1 / -1; border-right: 0; }
 .fact span { font-size: 0.72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
 .fact b { font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 1.6rem 0 0.7rem; }
+.section-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 10px; margin: 1.6rem 0 0.7rem; }
 .section-head h2 { margin: 0; }
 .section-head .count { margin-left: 6px; color: var(--primary); }
 .section-head .btn { min-height: 38px; padding: 0 14px; font-size: 0.88rem; }
