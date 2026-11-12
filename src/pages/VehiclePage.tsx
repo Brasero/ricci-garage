@@ -9,6 +9,7 @@ import { echeanceName } from './AgendaPage'
 import { fmtDateTime, StatusBadge } from '../components/ui'
 import { fullName, findVehiclesByPlate, saveVehicle, setVehicleArchived, type VehicleInput } from '../repo'
 import { ClientPicker, Field, PlateBadge, StaleBanner } from '../components/ui'
+import { useToast } from '../components/Toast'
 import { useGoBack } from '../useGoBack'
 import { useStaleGuard } from '../useStaleGuard'
 
@@ -41,6 +42,7 @@ const toForm = (v: Vehicle | undefined, clientId: string): VehicleInput => ({
 function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
   const nav = useNavigate()
   const goBack = useGoBack('/vehicules')
+  const toast = useToast()
   const [params] = useSearchParams()
   const [f, setF] = useState<VehicleInput>(() => toForm(existing, params.get('client') ?? ''))
   const guard = useStaleGuard(existing, (v) => {
@@ -92,6 +94,7 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
     }
     const id = await saveVehicle(f, existing)
     if (existing) guard.saved((await db.vehicles.get(id))!.updatedAt)
+    toast('Véhicule enregistré')
     goBack() // toujours la page précédente
   }
 

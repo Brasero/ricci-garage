@@ -8,6 +8,7 @@ import { PhotoGallery } from '../components/Photos'
 import { Field, StaleBanner, VehiclePicker } from '../components/ui'
 import { db, type Row } from '../db'
 import { linkRdvToIntervention, saveIntervention, setInterventionArchived, type InterventionInput } from '../repo'
+import { useToast } from '../components/Toast'
 import { useGoBack } from '../useGoBack'
 import { useStaleGuard } from '../useStaleGuard'
 
@@ -127,6 +128,7 @@ export function InterventionPage() {
 function InterventionForm({ existing }: { existing?: Row<Intervention> }) {
   const nav = useNavigate()
   const goBack = useGoBack('/interventions')
+  const toast = useToast()
   const location = useLocation()
   const [params] = useSearchParams()
   const rdvId = params.get('rdv')
@@ -172,6 +174,7 @@ function InterventionForm({ existing }: { existing?: Row<Intervention> }) {
     if (!existing && rdvId) await linkRdvToIntervention(rdvId, id)
     const row = (await db.interventions.get(id))!
     if (existing) guard.saved(row.updatedAt)
+    toast('Intervention enregistrée')
     const ask = parsed.input.statut === 'terminee' && !(await db.echeances.filter((e) => e.sourceInterventionId === id && !e.deletedAt).count())
     if (addPhotos) nav(`/interventions/${id}`, { replace: true, state: { askReminder: ask } })
     else if (ask) setReminder({ row, leave: true }) // proposition du prochain rappel, puis retour

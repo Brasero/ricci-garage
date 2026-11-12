@@ -7,6 +7,8 @@ import { ECHEANCE_TYPES, type Echeance, type EcheanceType } from '../../shared/t
 import { Field, StaleBanner, VehiclePicker } from '../components/ui'
 import { db, type Row } from '../db'
 import { saveEcheance, setEcheanceArchived, setEcheanceDone } from '../repo'
+import { useToast } from '../components/Toast'
+import { useGoBack } from '../useGoBack'
 import { useStaleGuard } from '../useStaleGuard'
 
 interface FormState {
@@ -37,10 +39,11 @@ export function EcheancePage() {
 
 function EcheanceForm({ existing }: { existing?: Row<Echeance> }) {
   const nav = useNavigate()
+  const goBack = useGoBack('/agenda')
+  const toast = useToast()
   const [params] = useSearchParams()
   const [f, setF] = useState<FormState>(() => toForm(existing, params.get('vehicule') ?? '', null))
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [saved, setSaved] = useState(false)
   const guard = useStaleGuard(existing, (e) => {
     setF(toForm(e, '', null))
     setErrors({})
@@ -48,7 +51,6 @@ function EcheanceForm({ existing }: { existing?: Row<Echeance> }) {
   const patch = <K extends keyof FormState>(k: K, v: FormState[K]) => {
     setF((p) => ({ ...p, [k]: v }))
     guard.markTouched()
-    setSaved(false)
   }
 
   async function submit(e: FormEvent) {
@@ -62,10 +64,9 @@ function EcheanceForm({ existing }: { existing?: Row<Echeance> }) {
     setErrors(errs)
     if (Object.keys(errs).length) return
     const id = await saveEcheance({ vehicleId: f.vehicleId, type: f.type, libelle: f.libelle, dateDue: f.dateDue || null, kmDue: km, statut: existing?.statut ?? 'ouverte', notes: f.notes }, existing)
-    if (existing) {
-      guard.saved((await db.echeances.get(id))!.updatedAt)
-      setSaved(true)
-    } else nav(`/vehicules/${f.vehicleId}`, { replace: true })
+    if (existing) guard.saved((await db.echeances.get(id))!.updatedAt)
+    toast('Échéance enregistrée')
+    goBack() // toujours la page précédente
   }
 
   async function archive() {
@@ -99,7 +100,6 @@ function EcheanceForm({ existing }: { existing?: Row<Echeance> }) {
           <textarea rows={2} value={f.notes} onChange={(e) => patch('notes', e.target.value)} />
         </Field>
         <button className="btn primary big" type="submit">Enregistrer</button>
-        {saved && <p className="ok-msg" role="status">✓ Enregistré</p>}
       </form>
       {existing && (
         <>

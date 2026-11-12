@@ -5,6 +5,7 @@ import { validateEmail, validatePhone } from '../../shared/phone'
 import { db, type Row } from '../db'
 import { archiveClient, findDuplicateClients, fullName, saveClient, type ClientInput } from '../repo'
 import { Field, StaleBanner, VehicleCard } from '../components/ui'
+import { useToast } from '../components/Toast'
 import { useGoBack } from '../useGoBack'
 import { useStaleGuard } from '../useStaleGuard'
 import type { Client } from '../../shared/types'
@@ -30,6 +31,7 @@ const toForm = (c?: Client): ClientInput => ({
 function ClientForm({ existing }: { existing?: Row<Client> }) {
   const nav = useNavigate()
   const goBack = useGoBack('/clients')
+  const toast = useToast()
   const [f, setF] = useState<ClientInput>(() => toForm(existing))
   const guard = useStaleGuard(existing, (c) => {
     setF(toForm(c))
@@ -68,6 +70,7 @@ function ClientForm({ existing }: { existing?: Row<Client> }) {
     }
     const id = await saveClient(f, existing)
     if (existing) guard.saved((await db.clients.get(id))!.updatedAt)
+    toast('Client enregistré')
     goBack() // toujours la page précédente
   }
 
