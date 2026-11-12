@@ -9,6 +9,7 @@ import { echeanceName } from './AgendaPage'
 import { fmtDateTime, StatusBadge } from '../components/ui'
 import { fullName, findVehiclesByPlate, saveVehicle, setVehicleArchived, type VehicleInput } from '../repo'
 import { ClientPicker, Field, PlateBadge, StaleBanner } from '../components/ui'
+import { useGoBack } from '../useGoBack'
 import { useStaleGuard } from '../useStaleGuard'
 
 const BRANDS = ['Alfa Romeo', 'Audi', 'BMW', 'Citroën', 'Cupra', 'Dacia', 'DS', 'Fiat', 'Ford', 'Honda', 'Hyundai', 'Jeep', 'Kia', 'Land Rover', 'Mazda', 'Mercedes-Benz', 'Mini', 'Mitsubishi', 'Nissan', 'Opel', 'Peugeot', 'Porsche', 'Renault', 'Seat', 'Skoda', 'Smart', 'Suzuki', 'Tesla', 'Toyota', 'Volkswagen', 'Volvo']
@@ -39,6 +40,7 @@ const toForm = (v: Vehicle | undefined, clientId: string): VehicleInput => ({
 
 function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
   const nav = useNavigate()
+  const goBack = useGoBack('/vehicules')
   const [params] = useSearchParams()
   const [f, setF] = useState<VehicleInput>(() => toForm(existing, params.get('client') ?? ''))
   const guard = useStaleGuard(existing, (v) => {
@@ -48,7 +50,6 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
   })
   const [errors, setErrors] = useState<Partial<Record<keyof VehicleInput, string>>>({})
   const [dupes, setDupes] = useState<Row<Vehicle>[]>([])
-  const [saved, setSaved] = useState(false)
   const clients = useLiveQuery(() => db.clients.toArray(), [], [])
   const history = useLiveQuery(
     async () => (existing ? (await db.interventions.where('vehicleId').equals(existing.id).filter((i) => !i.deletedAt).toArray()).sort((a, b) => b.startAt - a.startAt) : []),
@@ -66,7 +67,6 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
     setF((p) => ({ ...p, [k]: v }))
     guard.markTouched()
     setDupes([])
-    setSaved(false)
   }
   const text = (k: 'marque' | 'modele' | 'motorisationDetail' | 'plate' | 'couleur' | 'miseEnCirculation' | 'vin' | 'dernierCT' | 'notes') =>
     (e: { target: { value: string } }) => patch(k, e.target.value)
@@ -91,11 +91,8 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
       }
     }
     const id = await saveVehicle(f, existing)
-    if (existing) {
-      guard.saved((await db.vehicles.get(id))!.updatedAt)
-      setSaved(true)
-    }
-    else nav(`/vehicules/${id}`, { replace: true })
+    if (existing) guard.saved((await db.vehicles.get(id))!.updatedAt)
+    goBack() // toujours la page précédente
   }
 
   async function toggleArchive() {
@@ -175,7 +172,6 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
           </div>
         )}
         <button className="btn primary big" type="submit">{dupes.length > 0 ? 'Enregistrer quand même' : 'Enregistrer'}</button>
-        {saved && <p className="ok-msg" role="status">✓ Enregistré</p>}
       </form>
 
       {existing && (

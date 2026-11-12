@@ -8,6 +8,7 @@ import { PhotoGallery } from '../components/Photos'
 import { Field, StaleBanner, VehiclePicker } from '../components/ui'
 import { db, type Row } from '../db'
 import { linkRdvToIntervention, saveIntervention, setInterventionArchived, type InterventionInput } from '../repo'
+import { useGoBack } from '../useGoBack'
 import { useStaleGuard } from '../useStaleGuard'
 
 const MAX_PIECES = 50
@@ -125,11 +126,15 @@ export function InterventionPage() {
 
 function InterventionForm({ existing }: { existing?: Row<Intervention> }) {
   const nav = useNavigate()
+  const goBack = useGoBack('/interventions')
   const location = useLocation()
   const [params] = useSearchParams()
   const rdvId = params.get('rdv')
   const [f, setF] = useState<FormState>(() => toForm(existing, params.get('vehicule') ?? ''))
-  const [promptOpen, setPromptOpen] = useState(() => !!(location.state as { askReminder?: boolean } | null)?.askReminder)
+  // Proposition du prochain rappel : `leave` = on quitte la page ensuite (cas normal) ; sinon elle s'affiche sous le formulaire.
+  const [reminder, setReminder] = useState<{ row: Row<Intervention>; leave: boolean } | null>(() =>
+    existing && (location.state as { askReminder?: boolean } | null)?.askReminder ? { row: existing, leave: false } : null,
+  )
 
   // Création depuis un rendez-vous : on reprend son heure, son motif et son véhicule.
   useEffect(() => {
@@ -140,7 +145,6 @@ function InterventionForm({ existing }: { existing?: Row<Intervention> }) {
     })
   }, [existing, rdvId])
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [saved, setSaved] = useState(false)
   const guard = useStaleGuard(existing, (i) => {
     setF(toForm(i, ''))
     setErrors({})
@@ -151,31 +155,42 @@ function InterventionForm({ existing }: { existing?: Row<Intervention> }) {
   const patch = <K extends keyof FormState>(k: K, v: FormState[K]) => {
     setF((p) => ({ ...p, [k]: v }))
     guard.markTouched()
-    setSaved(false)
   }
   const txt = (k: 'startAt' | 'heures' | 'minutes' | 'km' | 'description' | 'mainOeuvre' | 'notes') => (e: { target: { value: string } }) => patch(k, e.target.value)
   const setPiece = (idx: number, k: keyof PieceDraft, v: string) => patch('pieces', f.pieces.map((p, i) => (i === idx ? { ...p, [k]: v } : p)))
 
-  async function submit(e: FormEvent) {
+  function submit(e: FormEvent) {
     e.preventDefault()
+    void save(false)
+  }
+
+  /** `addPhotos` : reste sur l'intervention enregistrée pour y ajouter des photos (impossible avant le premier enregistrement). */
+  async function save(addPhotos: boolean) {
     setErrors(parsed.errors)
     if (!parsed.input) return
     const id = await saveIntervention(parsed.input, existing)
+    if (!existing && rdvId) await linkRdvToIntervention(rdvId, id)
+    const row = (await db.interventions.get(id))!
+    if (existing) guard.saved(row.updatedAt)
     const ask = parsed.input.statut === 'terminee' && !(await db.echeances.filter((e) => e.sourceInterventionId === id && !e.deletedAt).count())
-    if (existing) {
-      guard.saved((await db.interventions.get(id))!.updatedAt)
-      setSaved(true)
-      if (ask) setPromptOpen(true)
-    } else {
-      if (rdvId) await linkRdvToIntervention(rdvId, id)
-      nav(`/interventions/${id}`, { replace: true, state: { askReminder: ask } })
-    }
+    if (addPhotos) nav(`/interventions/${id}`, { replace: true, state: { askReminder: ask } })
+    else if (ask) setReminder({ row, leave: true }) // proposition du prochain rappel, puis retour
+    else goBack() // toujours la page précédente
   }
 
   async function archive() {
     if (!existing || !window.confirm('Archiver cette intervention ? (récupérable depuis la corbeille)')) return
     await setInterventionArchived(existing.id, true)
     nav(-1)
+  }
+
+  if (reminder?.leave) {
+    return (
+      <>
+        <h1>Intervention enregistrée ✓</h1>
+        <NextReminderPrompt intervention={reminder.row} onDone={goBack} />
+      </>
+    )
   }
 
   return (
@@ -251,17 +266,21 @@ function InterventionForm({ existing }: { existing?: Row<Intervention> }) {
         </Field>
         {Object.keys(errors).length > 0 && <p className="error" role="alert">Corrigez les champs signalés avant d'enregistrer.</p>}
         <button className="btn primary big" type="submit">Enregistrer</button>
-        {saved && <p className="ok-msg" role="status">✓ Enregistré</p>}
+        {!existing && (
+          <button className="btn big" type="button" onClick={() => void save(true)}>
+            Enregistrer et ajouter des photos
+          </button>
+        )}
       </form>
 
-      {existing && promptOpen && <NextReminderPrompt intervention={existing} onDone={() => setPromptOpen(false)} />}
+      {existing && reminder && !reminder.leave && <NextReminderPrompt intervention={reminder.row} onDone={() => setReminder(null)} />}
       {existing ? (
         <>
           <PhotoGallery interventionId={existing.id} />
           <button className="btn danger" type="button" onClick={archive}>Archiver cette intervention</button>
         </>
       ) : (
-        <p className="muted">Enregistrez l'intervention pour pouvoir y ajouter des photos.</p>
+        <p className="muted">Les photos s'ajoutent une fois l'intervention enregistrée : utilisez « Enregistrer et ajouter des photos ».</p>
       )}
     </>
   )
