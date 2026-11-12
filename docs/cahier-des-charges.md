@@ -1,4 +1,4 @@
-# Cahier des charges — Ricci Garage
+# Cahier des charges — Mitch depann
 
 > **Statut : VALIDÉ (v0.4) — jalons 1 à 4 réalisés.** Aucun code n'est écrit tant que ce document n'est pas validé.
 > Les points marqués ❓ sont des questions ouvertes (regroupées en section 10). Plus de question bloquante : le document peut être validé.
@@ -171,7 +171,7 @@ TypeScript partout (une seule langue pour le front et le serveur) ; front **Reac
 
 ### 5.4 Google Calendar : sens unique d'abord
 Deux sens = deux sources de vérité = conflits difficiles et OAuth plus lourd (vérification Google pour certaines autorisations). Je recommande :
-- **v1 : application → Google Calendar** (les rendez-vous et interventions planifiées sont poussés vers un agenda dédié « Ricci Garage »). Bénéfice immédiat : ton père reçoit les **rappels natifs de Google Calendar sur son téléphone**, sans rien de plus.
+- **v1 : application → Google Calendar** (les rendez-vous et interventions planifiées sont poussés vers un agenda dédié « Mitch depann »). Bénéfice immédiat : ton père reçoit les **rappels natifs de Google Calendar sur son téléphone**, sans rien de plus.
 - Alternative encore plus simple : un **flux ICS en lecture** auquel Google Calendar s'abonne (mise à jour avec quelques heures de délai, mais zéro OAuth).
 - Synchronisation dans l'autre sens (modifier dans Google → app) : reportée, seulement si c'est vraiment utile.
 

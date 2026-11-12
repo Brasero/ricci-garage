@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom'
 import { formatEuros, computeTotals } from '../../shared/money'
 import { searchInterventions } from '../../shared/search'
 import { STATUTS, type Statut } from '../../shared/types'
-import { PlateBadge, StatusBadge, fmtDateTime } from '../components/ui'
+import { DateBox, EmptyState, StatusBadge } from '../components/ui'
+import { Icon } from '../components/Icon'
 import { db } from '../db'
 import { fullName } from '../repo'
 
@@ -34,26 +35,29 @@ export function InterventionsPage() {
         <h1>Interventions ({list.length})</h1>
         <Link className="btn primary" to="/interventions/nouveau">+ Nouvelle</Link>
       </div>
-      <input className="search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Plaque, propriétaire, pièce, travaux…" />
-      <div className="segmented" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 12 }}>
+      <div className="search-wrap">
+        <Icon name="search" size={20} />
+        <input className="search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Plaque, propriétaire, pièce, travaux…" />
+      </div>
+      <div className="segmented" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 14 }}>
         {([['', 'Toutes'], ...STATUTS] as const).map(([v, l]) => (
           <button key={v} type="button" className={statut === v ? 'on' : ''} onClick={() => setStatut(v as '' | Statut)}>{l}</button>
         ))}
       </div>
       {list.map(({ i, v, o }) => (
         <Link key={i.id} to={`/interventions/${i.id}`} className="card clickable">
-          <PlateBadge vehicle={v} />
+          <DateBox ms={i.startAt} />
           <div className="card-main">
-            <strong>{v.marque} {v.modele} · {fmtDateTime(i.startAt)}</strong>
+            <strong>{v.marque} {v.modele} · {v.plate}</strong>
             <span className="muted">{fullName(o)} · {i.description || 'Sans description'}</span>
           </div>
-          <div style={{ textAlign: 'right' }}>
+          <div className="side">
             <StatusBadge statut={i.statut} />
-            <div>{formatEuros(computeTotals(i.pieces, i.mainOeuvreCts).totalCts)}</div>
+            <span>{formatEuros(computeTotals(i.pieces, i.mainOeuvreCts).totalCts)}</span>
           </div>
         </Link>
       ))}
-      {list.length === 0 && <p className="empty">{q || statut ? 'Aucun résultat.' : 'Aucune intervention enregistrée.'}</p>}
+      {list.length === 0 && <EmptyState icon="wrench">{q || statut ? 'Aucun résultat.' : 'Aucune intervention enregistrée.'}</EmptyState>}
     </>
   )
 }

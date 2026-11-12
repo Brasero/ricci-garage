@@ -1,4 +1,4 @@
-# Ricci Garage
+# Mitch depann
 
 Application web (PWA) de suivi pour un garage : clients, véhicules (plaques FR/LU), interventions chiffrées avec photos, agenda et rappels par email, synchronisation Google Agenda, recherche globale.
 Fonctionne **hors connexion** : tout s'écrit d'abord sur l'appareil, puis se synchronise.
@@ -19,6 +19,16 @@ Cahier des charges : [`docs/cahier-des-charges.md`](docs/cahier-des-charges.md).
 - « Se déconnecter » (Réglages) efface cette empreinte : l'appareil exige alors une connexion en ligne.
 - Limites à connaître : les données de l'appareil restent dans le navigateur (non chiffrées) ; l'écran de code protège l'application, pas un examen technique du téléphone (garder un verrouillage d'écran). L'empreinte locale d'un code court se casse vite : **choisir une phrase de passe d'au moins 12 caractères**. Après un changement d'`APP_PASSWORD`, l'ancien code reste valable hors connexion sur les appareils déjà connectés jusqu'à leur prochaine connexion en ligne (ou « Se déconnecter »).
 - Quota : comme tout passe par le Worker, chaque fichier chargé compte dans les 100 000 requêtes/jour du forfait gratuit ; l'application étant mise en cache sur l'appareil, l'usage prévu en est très loin.
+
+## Fiche véhicule en PDF (à remettre au client)
+
+Sur la fiche d'un véhicule : bouton **Fiche PDF** (et **Partager la fiche** sur les téléphones qui le permettent). Le PDF est généré **sur l'appareil**, y compris hors connexion, et nommé `Fiche-<plaque>-<date>.pdf`.
+
+- **Contenu** : coordonnées du garage (Réglages), véhicule, propriétaire, puis l'historique des interventions **terminées**, de la plus récente à la plus ancienne : date, kilométrage, travaux, durée, pièces avec **prix de vente** (unitaire et total), **main d'œuvre**, total de chaque intervention et total général.
+- **Jamais dans le PDF** : prix d'achat, marge, notes internes, photos. Le modèle du document (`shared/fiche.ts`) n'a aucun champ pour les porter, et des tests le vérifient.
+- **Mention** : « Document récapitulatif des interventions réalisées sur ce véhicule. Il ne tient pas lieu de facture. » (l'application ne gère ni TVA ni numérotation de factures).
+- Les interventions « à faire » ou « en cours » et les interventions archivées n'y figurent pas.
+- Les caractères hors latin-1 (emoji, alphabets non latins) sont remplacés par « ? » : les polices PDF standard utilisées ne les connaissent pas.
 
 ## Agenda et rappels par email
 
@@ -83,7 +93,7 @@ Sans la validation en deux étapes, Google ne propose pas les mots de passe d'ap
 #### A3. Créer le mot de passe d'application
 
 1. Ouvre <https://myaccount.google.com/apppasswords>. (Si la page répond « non disponible », la validation en deux étapes n'est pas active : retour à l'étape A2. Tu peux aussi chercher « Mots de passe des applications » dans la barre de recherche de ton compte Google.)
-2. Saisis un nom reconnaissable, par exemple **Ricci Garage**, puis **Créer**.
+2. Saisis un nom reconnaissable, par exemple **Mitch depann**, puis **Créer**.
 3. Google affiche un code de **16 lettres**, parfois présenté en 4 groupes de 4 (`abcd efgh ijkl mnop`). **Il n'est affiché qu'une seule fois.** Garde la fenêtre ouverte jusqu'à l'étape A4. Tu le saisiras **sans les espaces**.
 4. Si tu perds le code : supprime ce mot de passe d'application dans la même page et crée-en un nouveau.
 
@@ -147,7 +157,7 @@ Le message s'affiche dans Réglages → *Envoi des emails* (ligne *Dernière vé
 | Test OK mais aucun rappel automatique | Cron inactif, heure d'envoi non atteinte, client sans email ou exclu, fenêtre dépassée | Cloudflare → *Workers & Pages* → `ricci-garage` → *Paramètres* → *Déclencheurs* : deux crons (`*/15 * * * *` et `5,20,35,50 * * * *`) doivent apparaître ; sinon, redéployer (`npm run deploy`) |
 | Emails dans les indésirables | Expéditeur Gmail inconnu du destinataire | « Pas du spam » une fois ; demander au client d'ajouter l'adresse à ses contacts |
 
-**Révoquer ou changer l'envoi** : <https://myaccount.google.com/apppasswords> → supprimer « Ricci Garage » (l'envoi s'arrête aussitôt). Pour reprendre : A3 puis `npx wrangler secret put SMTP_PASSWORD`.
+**Révoquer ou changer l'envoi** : <https://myaccount.google.com/apppasswords> → supprimer « Mitch depann » (l'envoi s'arrête aussitôt). Pour reprendre : A3 puis `npx wrangler secret put SMTP_PASSWORD`.
 
 ---
 
@@ -199,9 +209,9 @@ Fais cette étape **dans le compte Google de ton père** (celui du téléphone),
 
 1. Ouvre <https://calendar.google.com> (ordinateur).
 2. Colonne de gauche, à côté de **Autres agendas** → **+** → **Créer un agenda**.
-3. Nom : **Ricci Garage** ; fuseau horaire : **(GMT+01:00) heure d'Europe centrale – Luxembourg** → **Créer l'agenda**.
+3. Nom : **Mitch depann** ; fuseau horaire : **(GMT+01:00) heure d'Europe centrale – Luxembourg** → **Créer l'agenda**.
    *Pourquoi un agenda dédié ?* L'application crée, modifie et supprime ses propres événements : mieux vaut qu'elle ne soit pas mélangée à l'agenda personnel.
-4. Dans la colonne de gauche, survole **Ricci Garage** → **⋮** → **Paramètres et partage**.
+4. Dans la colonne de gauche, survole **Mitch depann** → **⋮** → **Paramètres et partage**.
 5. Section **Partager avec des personnes ou des groupes spécifiques** → **Ajouter des personnes ou des groupes**.
 6. Colle l'**adresse du compte de service** (B4). Dans *Autorisations*, choisis **Apporter des modifications aux événements** → **Envoyer**.
    (Google peut avertir que l'adresse n'est pas un compte Google classique : c'est normal pour un compte de service, valide quand même.)
@@ -233,7 +243,7 @@ Wrangler répond `Success! Uploaded secret GOOGLE_SA_JSON`. Vérifie : `npx wran
 1. Ouvre l'application → **Réglages** → **Garage et rappels** → champ **Identifiant de l'agenda Google** → colle l'ID copié en B7 → **Enregistrer les réglages**.
 2. Descends jusqu'à **Google Agenda**. Tu dois lire **« ✓ Compte de service configuré. Partagez votre agenda Google avec … »** suivi de l'adresse du compte de service. Si ce n'est pas le cas, le secret B8 est absent ou illisible.
 3. Clique sur **🔄 Synchroniser Google Agenda**. Au bout de quelques secondes : *« Dernière synchronisation : … N envoyé(s) … N élément(s) dans Google Agenda »*.
-4. Ouvre <https://calendar.google.com> : les événements apparaissent dans **Ricci Garage** (📅 rendez-vous, 🔧 interventions, ⏰ échéances « toute la journée »).
+4. Ouvre <https://calendar.google.com> : les événements apparaissent dans **Mitch depann** (📅 rendez-vous, 🔧 interventions, ⏰ échéances « toute la journée »).
 
 Ensuite tout est automatique : chaque création, modification, annulation ou archivage est répercuté en moins de 20 minutes, ou tout de suite avec le bouton.
 
@@ -242,8 +252,8 @@ Ensuite tout est automatique : chaque création, modification, annulation ou arc
 À faire **sur son téléphone**, dans **son** compte Google, car c'est lui le propriétaire des alertes :
 
 1. Installer / ouvrir l'application **Google Agenda** et être connecté au bon compte.
-2. Menu ☰ → vérifier que **Ricci Garage** est **coché** (visible), sinon cocher la case. Si l'agenda est absent : ☰ → *Paramètres* → *Ricci Garage* → activer **Synchronisation**.
-3. ☰ → **Paramètres** → **Ricci Garage** → **Notifications des événements** → **Ajouter une notification** (par exemple *30 minutes avant* et *1 jour avant*).
+2. Menu ☰ → vérifier que **Mitch depann** est **coché** (visible), sinon cocher la case. Si l'agenda est absent : ☰ → *Paramètres* → *Mitch depann* → activer **Synchronisation**.
+3. ☰ → **Paramètres** → **Mitch depann** → **Notifications des événements** → **Ajouter une notification** (par exemple *30 minutes avant* et *1 jour avant*).
 4. Même écran : **Notifications des événements sur toute la journée** → par exemple *1 jour avant à 08:00* : c'est ce qui prévient des contrôles techniques et vidanges à venir.
 5. Dans les paramètres Android → *Applications* → *Agenda* → *Notifications* : autoriser les notifications (et, selon les marques de téléphone, désactiver l'optimisation de batterie pour Google Agenda pour qu'elles arrivent à l'heure).
 
@@ -278,7 +288,7 @@ Les messages s'affichent dans Réglages → *Google Agenda* (ligne *Dernière sy
 - [ ] `npx wrangler secret list` affiche `APP_PASSWORD`, `SESSION_SECRET`, `SMTP_USER`, `SMTP_PASSWORD`, `GOOGLE_SA_JSON`.
 - [ ] Réglages → *Envoi des emails* : « ✓ Serveur d'envoi configuré » et l'email de test est arrivé.
 - [ ] Réglages → *Google Agenda* : « ✓ Compte de service configuré » et « N élément(s) dans Google Agenda ».
-- [ ] Les événements sont visibles dans l'agenda **Ricci Garage** sur <https://calendar.google.com>.
+- [ ] Les événements sont visibles dans l'agenda **Mitch depann** sur <https://calendar.google.com>.
 - [ ] Le téléphone de ton père affiche l'agenda et ses notifications sont réglées (B10).
 - [ ] Le fichier JSON de la clé est supprimé de l'ordinateur.
 - [ ] Un client de test avec un email a reçu un rappel de rendez-vous (A7).

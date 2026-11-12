@@ -6,6 +6,8 @@ import { TIMEZONE } from '../../shared/settings'
 import { addDays, addMonths, daysBetween, formatDateFr, localDate } from '../../shared/time'
 import { ECHEANCE_TYPES, type Client, type Echeance, type Vehicle } from '../../shared/types'
 import { db } from '../db'
+import { Icon } from '../components/Icon'
+import { EmptyState } from '../components/ui'
 import { fullName, setEcheanceDone } from '../repo'
 
 type View = 'a-venir' | 'jour' | 'semaine' | 'mois'
@@ -21,7 +23,7 @@ interface Item {
   to: string
   dim: boolean
 }
-const ICON = { rdv: '📅', inter: '🔧', echeance: '⏰' } as const
+const ICON = { rdv: 'calendar', inter: 'wrench', echeance: 'clock' } as const
 const hhmm = (ms: number) => new Date(ms).toLocaleTimeString('fr-FR', { timeZone: TIMEZONE, hour: '2-digit', minute: '2-digit' })
 export const echeanceName = (e: Echeance) => (e.type === 'autre' ? e.libelle || 'Échéance' : ECHEANCE_TYPES.find((t) => t[0] === e.type)![1] + (e.libelle ? ` (${e.libelle})` : ''))
 const carName = (v: Vehicle | undefined) => (v ? `${v.marque} ${v.modele} (${v.plate})` : 'véhicule')
@@ -61,7 +63,7 @@ function useAgendaData() {
 function ItemCard({ it }: { it: Item }) {
   return (
     <Link to={it.to} className={`card clickable agenda-item ${it.kind}${it.dim ? ' dim' : ''}`}>
-      <span aria-hidden>{ICON[it.kind]}</span>
+      <span className={`ico ${it.kind}`} aria-hidden><Icon name={ICON[it.kind]} size={18} /></span>
       <div className="card-main">
         <strong>{it.title}</strong>
         <span className="muted">{it.sub}</span>
@@ -129,7 +131,7 @@ function Upcoming({ data, today }: { data: AgendaData; today: string }) {
       {section('En retard', overdue.length, overdue.map((e) => row(e, `Échue depuis ${-daysBetween(today, e.dateDue!)} jour(s) — ${formatDateFr(e.dateDue!)}`, 'bad')))}
       {section('Rendez-vous (14 prochains jours)', upcomingRdv.length, upcomingRdv.map((r) => byDay.get(localDate(r.startAt, TIMEZONE))?.find((i) => i.key === `r${r.id}`)).filter((i): i is Item => !!i).map((it) => (
         <Link key={it.key} to={it.to} className="card clickable agenda-item rdv">
-          <span aria-hidden>📅</span>
+          <span className="ico rdv" aria-hidden><Icon name="calendar" size={18} /></span>
           <div className="card-main"><strong>{formatDateFr(it.day)} · {it.title.split(' · ')[0]}</strong><span className="muted">{it.title.split(' · ').slice(1).join(' · ')}{it.sub ? ` — ${it.sub}` : ''}</span></div>
         </Link>
       )))}
@@ -140,11 +142,11 @@ function Upcoming({ data, today }: { data: AgendaData; today: string }) {
       }))}
       {section('Interventions à faire / en cours', todo.length, todo.map((i) => (
         <Link key={i.id} to={`/interventions/${i.id}`} className="card clickable agenda-item inter">
-          <span aria-hidden>🔧</span>
+          <span className="ico inter" aria-hidden><Icon name="wrench" size={18} /></span>
           <div className="card-main"><strong>{carName(okCars.get(i.vehicleId))}</strong><span className="muted">{new Date(i.startAt).toLocaleDateString('fr-FR')} · {i.statut === 'en_cours' ? 'en cours' : 'à faire'} · {i.description || 'Sans description'}</span></div>
         </Link>
       )))}
-      {nothing && <p className="empty">Rien à signaler. Les échéances et rendez-vous à venir apparaîtront ici.</p>}
+      {nothing && <EmptyState icon="calendar">Rien à signaler. Les échéances et rendez-vous à venir apparaîtront ici.</EmptyState>}
     </>
   )
 }
@@ -172,7 +174,7 @@ function Calendar({ view, day, today, data, go }: { view: View; day: string; tod
       <section key={d} aria-label={formatDateFr(d)}>
         <h2 className={d === today ? 'today' : ''}>{formatDateFr(d)}{d === today ? ' · aujourd’hui' : ''}</h2>
         {its.map((it) => <ItemCard key={it.key} it={it} />)}
-        {!its.length && showEmpty && <p className="empty small">Rien de prévu.</p>}
+        {!its.length && showEmpty && <p className="muted" style={{ margin: '0 0 8px' }}>Rien de prévu.</p>}
         {view !== 'jour' && <Link className="link" to={`/rendez-vous/nouveau?date=${d}`}>+ Rendez-vous ce jour</Link>}
       </section>
     )
@@ -209,9 +211,9 @@ function Calendar({ view, day, today, data, go }: { view: View; day: string; tod
   return (
     <>
       <div className="cal-nav">
-        <button type="button" className="btn" onClick={() => step(-1)} aria-label="Précédent">‹</button>
+        <button type="button" className="btn" onClick={() => step(-1)} aria-label="Précédent"><Icon name="chevron-right" size={18} className="flip" /></button>
         <strong className="cal-label">{label}</strong>
-        <button type="button" className="btn" onClick={() => step(1)} aria-label="Suivant">›</button>
+        <button type="button" className="btn" onClick={() => step(1)} aria-label="Suivant"><Icon name="chevron-right" size={18} /></button>
         <button type="button" className="btn" onClick={() => go({ date: today })}>Aujourd'hui</button>
       </div>
       {body}

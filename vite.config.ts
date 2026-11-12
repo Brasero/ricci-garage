@@ -11,15 +11,15 @@ export default defineConfig({
       useCredentials: true,
       includeAssets: ['icon-192.png', 'icon-512.png'],
       manifest: {
-        name: 'Ricci Garage',
-        short_name: 'Ricci Garage',
+        name: 'Mitch depann',
+        short_name: 'Mitch depann',
         description: 'Suivi clients, véhicules et interventions',
         lang: 'fr',
         start_url: '/',
         scope: '/',
         display: 'standalone',
-        background_color: '#f4f6f9',
-        theme_color: '#184070',
+        background_color: '#f3f6fb',
+        theme_color: '#1d4b86',
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
@@ -28,7 +28,7 @@ export default defineConfig({
       workbox: {
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
-        globPatterns: ['**/*.{js,css,html,png,svg,ico,webmanifest}'],
+        globPatterns: ['**/*.{js,css,html,png,svg,ico,webmanifest,woff2}'],
       },
     }),
   ],

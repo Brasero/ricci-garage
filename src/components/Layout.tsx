@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { countPending } from '../db'
+import { Icon, Logo } from './Icon'
 import { useSyncState } from '../sync'
 
 function SyncBadge() {
@@ -20,27 +21,30 @@ function SyncBadge() {
 }
 
 const NAV = [
-  { to: '/', label: 'Recherche', icon: '🔍', end: true },
-  { to: '/clients', label: 'Clients', icon: '👤' },
-  { to: '/vehicules', label: 'Véhicules', icon: '🚗' },
-  { to: '/interventions', label: 'Interventions', icon: '🔧' },
-  { to: '/agenda', label: 'Agenda', icon: '📅' },
-  { to: '/parametres', label: 'Réglages', icon: '⚙️' },
-]
+  { to: '/', label: 'Recherche', icon: 'search', end: true },
+  { to: '/clients', label: 'Clients', icon: 'users' },
+  { to: '/vehicules', label: 'Véhicules', icon: 'car' },
+  { to: '/interventions', label: 'Interventions', icon: 'wrench' },
+  { to: '/agenda', label: 'Agenda', icon: 'calendar' },
+  { to: '/parametres', label: 'Réglages', icon: 'sliders' },
+] as const
 
 export function Layout() {
   return (
     <div className="shell">
       <header className="topbar">
         <Link to="/" className="brand">
-          Ricci Garage
+          <Logo size={34} />
+          <span>Mitch depann</span>
         </Link>
         <SyncBadge />
       </header>
       <nav className="nav" aria-label="Navigation principale">
         {NAV.map((n) => (
-          <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => (isActive ? 'active' : '')}>
-            <span aria-hidden>{n.icon}</span>
+          <NavLink key={n.to} to={n.to} end={'end' in n ? n.end : false} className={({ isActive }) => (isActive ? 'active' : '')}>
+            <span className="nav-ico">
+              <Icon name={n.icon} size={22} />
+            </span>
             {n.label}
           </NavLink>
         ))}

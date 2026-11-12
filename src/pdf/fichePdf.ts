@@ -23,7 +23,7 @@ export async function renderFichePdf(m: FicheModel): Promise<Uint8Array> {
   const supported = new Set(regular.getCharacterSet())
   doc.setTitle(`Fiche véhicule — ${m.vehicule.titre}`)
   doc.setAuthor(m.garage.nom)
-  doc.setCreator('Ricci Garage')
+  doc.setCreator('Mitch depann')
   doc.setLanguage('fr-FR')
 
   /** Les polices standard ne connaissent que le latin-1 : on normalise les espaces spéciaux et on remplace le reste par « ? ». */

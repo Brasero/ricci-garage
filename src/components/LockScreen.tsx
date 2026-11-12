@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Logo } from './Icon'
 import { checkVerifier, createVerifier, loadVerifier, storeVerifier, unlockNow } from '../lock'
 import { login } from '../sync'
 
@@ -58,8 +59,8 @@ export function LockScreen() {
   return (
     <main className="lock">
       <form onSubmit={submit} className="lock-card">
-        <div className="lock-icon" aria-hidden>🔒</div>
-        <h1>Ricci Garage</h1>
+        <Logo size={56} />
+        <h1>Mitch depann</h1>
         <p className="muted">{hasVerifier ? 'Saisissez le code pour accéder à l\'application.' : 'Saisissez le code pour connecter cet appareil.'}</p>
         <input
           ref={input}

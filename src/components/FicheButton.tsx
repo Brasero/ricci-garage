@@ -3,6 +3,7 @@ import { buildFicheModel } from '../../shared/fiche'
 import { SETTINGS_ID, withDefaults } from '../../shared/settings'
 import type { Client, Vehicle } from '../../shared/types'
 import { db } from '../db'
+import { Icon } from './Icon'
 import { useToast } from './Toast'
 
 /** Génère la fiche véhicule en PDF (à remettre au client : prix de vente et main d'œuvre, jamais le prix d'achat). */
@@ -59,17 +60,15 @@ export function FicheButton({ vehicle, owner }: { vehicle: Vehicle; owner: Clien
 
   return (
     <>
-      <div className="actions">
-        <button type="button" className="btn" disabled={busy} onClick={() => void run('download')}>
-          📄 {busy ? 'Création…' : 'Fiche PDF'}
+      <button type="button" className="btn" disabled={busy} onClick={() => void run('download')}>
+        <Icon name="file" size={18} /> {busy ? 'Création…' : 'Fiche PDF'}
+      </button>
+      {canShare && (
+        <button type="button" className="btn" disabled={busy} onClick={() => void run('share')}>
+          <Icon name="share" size={18} /> Partager la fiche
         </button>
-        {canShare && (
-          <button type="button" className="btn" disabled={busy} onClick={() => void run('share')}>
-            📤 Partager la fiche
-          </button>
-        )}
-      </div>
-      {error && <p className="error" role="alert">{error}</p>}
+      )}
+      {error && <p className="error" role="alert" style={{ flexBasis: '100%' }}>{error}</p>}
     </>
   )
 }

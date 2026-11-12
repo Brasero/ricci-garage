@@ -1,9 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { searchAll } from '../../shared/search'
 import { STATUTS, type Client, type Statut, type Vehicle } from '../../shared/types'
 import { db } from '../db'
 import { fullName } from '../repo'
+import { Icon, type IconName } from './Icon'
 
 export function Field({ label, error, hint, children }: { label: string; error?: string; hint?: string; children: ReactNode }) {
   return (
@@ -16,12 +18,31 @@ export function Field({ label, error, hint, children }: { label: string; error?:
   )
 }
 
-export function PlateBadge({ vehicle }: { vehicle: Pick<Vehicle, 'plate' | 'country'> }) {
+/** Plaque d'immatriculation de style européen (bande bleue F / L). */
+export function PlateBadge({ vehicle, large = false }: { vehicle: Pick<Vehicle, 'plate' | 'country'>; large?: boolean }) {
   return (
-    <span className={`plate plate-${vehicle.country.toLowerCase()}`}>
-      <span className="plate-country">{vehicle.country}</span>
-      {vehicle.plate}
+    <span className={`plate plate-${vehicle.country.toLowerCase()}${large ? ' plate-lg' : ''}`}>
+      <span className="plate-country" aria-label={vehicle.country === 'LU' ? 'Luxembourg' : 'France'}>{vehicle.country === 'LU' ? 'L' : 'F'}</span>
+      <span className="plate-body">{vehicle.plate}</span>
     </span>
+  )
+}
+
+/** Pastille ronde avec les initiales (couleur stable pour une même personne). */
+export function Avatar({ name, large = false }: { name: string; large?: boolean }) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  const initials = ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() || '?'
+  let h = 0
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  return <span className={`avatar av-${h % 6}${large ? ' lg' : ''}`} aria-hidden>{initials}</span>
+}
+
+export function EmptyState({ icon, children }: { icon: IconName; children: ReactNode }) {
+  return (
+    <div className="empty">
+      <span className="empty-ico"><Icon name={icon} size={22} /></span>
+      <p>{children}</p>
+    </div>
   )
 }
 
@@ -35,6 +56,7 @@ export function VehicleCard({ vehicle, owner, onClick }: { vehicle: Vehicle; own
         </strong>
         <span className="muted">{owner ? fullName(owner) : '—'}</span>
       </div>
+      <Icon name="chevron-right" size={18} className="chev" />
     </div>
   )
 }
@@ -133,3 +155,28 @@ export function StatusBadge({ statut }: { statut: Statut }) {
 }
 
 export const fmtDateTime = (ms: number): string => new Date(ms).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
+
+/** Ligne de client dans une liste : avatar, nom, téléphone. */
+export function ClientCard({ client, to }: { client: Client; to: string }) {
+  return (
+    <Link to={to} className="card clickable">
+      <Avatar name={fullName(client)} />
+      <div className="card-main">
+        <strong>{fullName(client)}</strong>
+        <span className="muted">{client.telephone}</span>
+      </div>
+      <Icon name="chevron-right" size={18} className="chev" />
+    </Link>
+  )
+}
+
+/** Petit calendrier : jour et mois d'une date (cartes d'historique). */
+export function DateBox({ ms }: { ms: number }) {
+  const d = new Date(ms)
+  return (
+    <span className="datebox" aria-hidden>
+      <b>{d.getDate()}</b>
+      <i>{d.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '')}</i>
+    </span>
+  )
+}

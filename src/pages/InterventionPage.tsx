@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'reac
 import { computeTotals, eurosToInput, formatEuros, parseEuros } from '../../shared/money'
 import { INTERVENTION_TYPES, STATUTS, type Intervention, type InterventionType, type Piece, type Statut } from '../../shared/types'
 import { NextReminderPrompt } from '../components/NextReminderPrompt'
+import { Icon } from '../components/Icon'
 import { PhotoGallery } from '../components/Photos'
 import { Field, StaleBanner, VehiclePicker } from '../components/ui'
 import { db, type Row } from '../db'
@@ -201,6 +202,8 @@ function InterventionForm({ existing }: { existing?: Row<Intervention> }) {
       <h1>{existing ? 'Intervention' : 'Nouvelle intervention'}</h1>
       {guard.stale && <StaleBanner onReload={guard.reloadNow} onKeep={guard.keepMine} />}
       <form onSubmit={submit} noValidate className="form">
+        <div className="panel">
+        <h3><Icon name="car" size={18} /> Véhicule et date</h3>
         <VehiclePicker value={f.vehicleId} onChange={(v) => patch('vehicleId', v)} error={errors.vehicleId} />
         {f.vehicleId && <Link className="link" to={`/vehicules/${f.vehicleId}`}>Voir la fiche du véhicule</Link>}
 
@@ -217,6 +220,10 @@ function InterventionForm({ existing }: { existing?: Row<Intervention> }) {
             {STATUTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </Field>
+        </div>
+
+        <div className="panel">
+        <h3><Icon name="wrench" size={18} /> Travaux</h3>
         <Field label="Travaux effectués / description">
           <textarea rows={4} value={f.description} onChange={txt('description')} />
         </Field>
@@ -232,9 +239,12 @@ function InterventionForm({ existing }: { existing?: Row<Intervention> }) {
           </Field>
         </div>
 
-        <div className="page-head">
-          <h2>Pièces ({parsed.pieces.length})</h2>
-          <button type="button" className="btn" disabled={f.pieces.length >= MAX_PIECES} onClick={() => patch('pieces', [...f.pieces, emptyPiece()])}>+ Ajouter une pièce</button>
+        </div>
+
+        <div className="panel">
+        <div className="section-inline">
+          <h3><Icon name="file" size={18} /> Pièces ({parsed.pieces.length})</h3>
+          <button type="button" className="btn soft" disabled={f.pieces.length >= MAX_PIECES} onClick={() => patch('pieces', [...f.pieces, emptyPiece()])}>+ Ajouter une pièce</button>
         </div>
         {f.pieces.map((p, idx) => (
           <div className="piece" key={idx}>
@@ -252,6 +262,10 @@ function InterventionForm({ existing }: { existing?: Row<Intervention> }) {
           </div>
         ))}
 
+        </div>
+
+        <div className="panel">
+        <h3><Icon name="clock" size={18} /> Main d'œuvre et total</h3>
         <Field label="Main d'œuvre (prix en €)" error={errors.mainOeuvre} hint="Saisie libre, indépendante de la durée">
           <input inputMode="decimal" value={f.mainOeuvre} onChange={txt('mainOeuvre')} />
         </Field>
@@ -264,9 +278,13 @@ function InterventionForm({ existing }: { existing?: Row<Intervention> }) {
           <div className="grand"><span>Total</span><span>{formatEuros(totals.totalCts)}</span></div>
         </div>
 
+        </div>
+
+        <div className="panel">
         <Field label="Notes internes">
           <textarea rows={2} value={f.notes} onChange={txt('notes')} />
         </Field>
+        </div>
         {Object.keys(errors).length > 0 && <p className="error" role="alert">Corrigez les champs signalés avant d'enregistrer.</p>}
         <button className="btn primary big" type="submit">Enregistrer</button>
         {!existing && (
@@ -279,6 +297,7 @@ function InterventionForm({ existing }: { existing?: Row<Intervention> }) {
       {existing && reminder && !reminder.leave && <NextReminderPrompt intervention={reminder.row} onDone={() => setReminder(null)} />}
       {existing ? (
         <>
+          <h2>Photos</h2>
           <PhotoGallery interventionId={existing.id} />
           <button className="btn danger" type="button" onClick={archive}>Archiver cette intervention</button>
         </>

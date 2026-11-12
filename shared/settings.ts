@@ -9,7 +9,7 @@ export const DEFAULT_SETTINGS: Settings = {
   createdAt: 0,
   updatedAt: 0,
   deletedAt: null,
-  garageNom: 'Ricci Garage',
+  garageNom: 'Mitch depann',
   garageAdresse: '',
   garageTelephone: '',
   garageEmail: 'riccimichel3@gmail.com',

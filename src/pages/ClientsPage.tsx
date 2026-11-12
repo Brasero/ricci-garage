@@ -3,7 +3,8 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { searchAll } from '../../shared/search'
 import { db } from '../db'
-import { fullName } from '../repo'
+import { ClientCard, EmptyState } from '../components/ui'
+import { Icon } from '../components/Icon'
 
 export function ClientsPage() {
   const [q, setQ] = useState('')
@@ -20,16 +21,14 @@ export function ClientsPage() {
           + Nouveau
         </Link>
       </div>
-      <input className="search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filtrer par nom, prénom, téléphone…" />
+      <div className="search-wrap">
+        <Icon name="search" size={20} />
+        <input className="search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filtrer les clients…" />
+      </div>
       {list.map((c) => (
-        <Link key={c.id} to={`/clients/${c.id}`} className="card clickable">
-          <div className="card-main">
-            <strong>{fullName(c)}</strong>
-            <span className="muted">{c.telephone}</span>
-          </div>
-        </Link>
+        <ClientCard key={c.id} client={c} to={`/clients/${c.id}`} />
       ))}
-      {list.length === 0 && <p className="empty">{q ? 'Aucun résultat.' : 'Aucun client enregistré.'}</p>}
+      {list.length === 0 && <EmptyState icon="users">{q ? 'Aucun résultat.' : 'Aucun client enregistré.'}</EmptyState>}
     </>
   )
 }

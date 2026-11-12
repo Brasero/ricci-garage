@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { addMonths, localDate } from '../../shared/time'
 import { TIMEZONE } from '../../shared/settings'
 import { ECHEANCE_TYPES, type Echeance, type EcheanceType } from '../../shared/types'
+import { Icon } from '../components/Icon'
 import { Field, StaleBanner, VehiclePicker } from '../components/ui'
 import { db, type Row } from '../db'
 import { saveEcheance, setEcheanceArchived, setEcheanceDone } from '../repo'
@@ -81,7 +82,13 @@ function EcheanceForm({ existing }: { existing?: Row<Echeance> }) {
       {guard.stale && <StaleBanner onReload={guard.reloadNow} onKeep={guard.keepMine} />}
       {existing?.statut === 'faite' && <p className="ok-msg">✓ Marquée comme faite</p>}
       <form onSubmit={submit} noValidate className="form">
+        <div className="panel">
+        <h3><Icon name="car" size={18} /> Véhicule</h3>
         <VehiclePicker value={f.vehicleId} onChange={(v) => patch('vehicleId', v)} error={errors.vehicleId} />
+        </div>
+
+        <div className="panel">
+        <h3><Icon name="clock" size={18} /> Échéance</h3>
         <Field label="Type">
           <select value={f.type} onChange={(e) => patch('type', e.target.value as EcheanceType)}>
             {ECHEANCE_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -99,6 +106,7 @@ function EcheanceForm({ existing }: { existing?: Row<Echeance> }) {
         <Field label="Notes">
           <textarea rows={2} value={f.notes} onChange={(e) => patch('notes', e.target.value)} />
         </Field>
+        </div>
         <button className="btn primary big" type="submit">Enregistrer</button>
       </form>
       {existing && (

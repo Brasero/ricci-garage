@@ -3,7 +3,8 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { searchAll } from '../../shared/search'
 import { db } from '../db'
-import { VehicleCard } from '../components/ui'
+import { EmptyState, VehicleCard } from '../components/ui'
+import { Icon } from '../components/Icon'
 
 export function VehiclesPage() {
   const nav = useNavigate()
@@ -26,11 +27,14 @@ export function VehiclesPage() {
           + Nouveau
         </Link>
       </div>
-      <input className="search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Plaque, marque, modèle, propriétaire…" />
+      <div className="search-wrap">
+        <Icon name="search" size={20} />
+        <input className="search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Plaque, marque, modèle, propriétaire…" />
+      </div>
       {list.map((v) => (
         <VehicleCard key={v.id} vehicle={v} owner={owners.get(v.clientId)} onClick={() => nav(`/vehicules/${v.id}`)} />
       ))}
-      {list.length === 0 && <p className="empty">{q ? 'Aucun résultat.' : 'Aucun véhicule enregistré.'}</p>}
+      {list.length === 0 && <EmptyState icon="car">{q ? 'Aucun résultat.' : 'Aucun véhicule enregistré.'}</EmptyState>}
     </>
   )
 }
