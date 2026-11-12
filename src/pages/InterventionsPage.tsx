@@ -39,7 +39,7 @@ export function InterventionsPage() {
         <Icon name="search" size={20} />
         <input className="search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Plaque, propriétaire, pièce, travaux…" />
       </div>
-      <div className="segmented" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 14 }}>
+      <div className="segmented" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', marginBottom: 14 }}>
         {([['', 'Toutes'], ...STATUTS] as const).map(([v, l]) => (
           <button key={v} type="button" className={statut === v ? 'on' : ''} onClick={() => setStatut(v as '' | Statut)}>{l}</button>
         ))}
