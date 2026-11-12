@@ -24,7 +24,7 @@ const NAV = [
   { to: '/', label: 'Recherche', icon: 'search', end: true },
   { to: '/clients', label: 'Clients', icon: 'users' },
   { to: '/vehicules', label: 'Véhicules', icon: 'car' },
-  { to: '/interventions', label: 'Interventions', icon: 'wrench' },
+  { to: '/interventions', label: 'Interventions', short: 'Interv.', icon: 'wrench' },
   { to: '/agenda', label: 'Agenda', icon: 'calendar' },
   { to: '/parametres', label: 'Réglages', icon: 'sliders' },
 ] as const
@@ -35,7 +35,7 @@ export function Layout() {
       <header className="topbar">
         <Link to="/" className="brand">
           <Logo size={34} />
-          <span>Mitch depann</span>
+          <span className="brand-name">Mitch depann</span>
         </Link>
         <SyncBadge />
       </header>
@@ -45,7 +45,10 @@ export function Layout() {
             <span className="nav-ico">
               <Icon name={n.icon} size={22} />
             </span>
-            {n.label}
+            <span className="nav-label">
+              <span className="lbl-l">{n.label}</span>
+              <span className="lbl-s" aria-hidden>{'short' in n ? n.short : n.label}</span>
+            </span>
           </NavLink>
         ))}
       </nav>

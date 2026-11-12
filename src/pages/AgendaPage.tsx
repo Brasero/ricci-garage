@@ -86,7 +86,7 @@ export function AgendaPage() {
         <h1>Agenda</h1>
         <Link className="btn primary" to={`/rendez-vous/nouveau${view !== 'a-venir' ? `?date=${day}` : ''}`}>+ Rendez-vous</Link>
       </div>
-      <div className="segmented tabs" role="tablist">
+      <div className="segmented tabs scroll" role="tablist">
         {VIEWS.map(([v, l]) => (
           <button key={v} type="button" role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => go({ vue: v })}>{l}</button>
         ))}

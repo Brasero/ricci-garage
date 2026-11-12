@@ -248,11 +248,15 @@ function InterventionForm({ existing }: { existing?: Row<Intervention> }) {
         </div>
         {f.pieces.map((p, idx) => (
           <div className="piece" key={idx}>
-            <input placeholder="Désignation (ex. Filtre à huile)" aria-label={`Désignation pièce ${idx + 1}`} value={p.designation} onChange={(e) => setPiece(idx, 'designation', e.target.value)} />
-            <div className="piece-grid">
+            <div className="piece-top">
+              <input placeholder="Désignation (ex. Filtre à huile)" aria-label={`Désignation pièce ${idx + 1}`} value={p.designation} onChange={(e) => setPiece(idx, 'designation', e.target.value)} />
+              <button type="button" className="btn danger icon-only" aria-label={`Retirer la pièce ${idx + 1}`} title="Retirer cette pièce" onClick={() => patch('pieces', f.pieces.filter((_, i) => i !== idx))}>
+                <Icon name="trash" size={18} />
+              </button>
+            </div>
+            <div className="row2">
               <input placeholder="Référence" aria-label={`Référence pièce ${idx + 1}`} value={p.reference} onChange={(e) => setPiece(idx, 'reference', e.target.value)} />
               <input placeholder="Quantité" inputMode="decimal" aria-label={`Quantité pièce ${idx + 1}`} value={p.quantite} onChange={(e) => setPiece(idx, 'quantite', e.target.value)} />
-              <button type="button" className="btn danger" style={{ margin: 0 }} onClick={() => patch('pieces', f.pieces.filter((_, i) => i !== idx))}>Retirer</button>
             </div>
             <div className="row2">
               <input placeholder="Prix d'achat unit. (€)" inputMode="decimal" aria-label={`Prix d'achat pièce ${idx + 1}`} value={p.achat} onChange={(e) => setPiece(idx, 'achat', e.target.value)} />
