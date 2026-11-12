@@ -11,27 +11,27 @@ export function loginPage(nonce: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#184070">
-<title>Ricci Garage</title>
+<title>Mitch depann</title>
 <style nonce="${nonce}">
-:root{--bg:#f4f6f9;--surface:#fff;--text:#17212b;--muted:#5d6b7a;--border:#d6dde5;--primary:#184070;--on:#fff;--bad:#b3261e}
-@media(prefers-color-scheme:dark){:root{--bg:#11161c;--surface:#1a222b;--text:#e8edf2;--muted:#9aa8b6;--border:#2c3845;--primary:#5b9bd8;--on:#0b1520;--bad:#ff8a80}}
+:root{--bg:#f3f6fb;--surface:#fff;--text:#0f1b2d;--muted:#6b7a90;--border:#e2e8f1;--border-strong:#cdd6e3;--primary:#1d4b86;--on:#fff;--bad:#b42318;--ring:0 0 0 4px rgba(29,75,134,.18)}
+@media(prefers-color-scheme:dark){:root{--bg:#0a111e;--surface:#111b2d;--text:#e9eff9;--muted:#8a9ab2;--border:#1f2d46;--border-strong:#2c3d5c;--primary:#6aa6ee;--on:#07142a;--bad:#ff8e85;--ring:0 0 0 4px rgba(106,166,238,.25)}}
 *{box-sizing:border-box}
-body{margin:0;min-height:100dvh;display:grid;place-items:center;padding:16px;background:var(--bg);color:var(--text);font:17px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-form{width:100%;max-width:380px;display:grid;gap:10px;text-align:center}
-h1{margin:0}
-.icon{font-size:3rem}
+body{margin:0;min-height:100dvh;display:grid;place-items:center;padding:20px;color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:radial-gradient(120% 80% at 50% 0%,color-mix(in srgb,var(--primary) 22%,var(--bg)) 0%,var(--bg) 60%)}
+form{width:100%;max-width:380px;display:grid;gap:12px;text-align:center;padding:28px 22px;background:var(--surface);border:1px solid var(--border);border-radius:24px;box-shadow:0 4px 16px rgba(16,33,60,.09)}
+.logo{margin:0 auto;border-radius:15px;box-shadow:0 2px 8px rgba(20,51,95,.35)}
+h1{margin:0;font-size:1.65rem;line-height:1.2;font-weight:750;letter-spacing:-.025em}
 p{margin:0;color:var(--muted)}
-input{font:inherit;font-size:1.1rem;padding:14px 16px;border:2px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);text-align:center;width:100%}
-input:focus{outline:none;border-color:var(--primary)}
-button{font:inherit;font-weight:600;font-size:1.1rem;min-height:54px;border:0;border-radius:12px;background:var(--primary);color:var(--on);cursor:pointer}
-button:disabled{opacity:.5}
-.err{color:var(--bad);font-weight:600;min-height:1.4em}
+input{font:inherit;font-size:1.05rem;padding:15px 16px;border:1.5px solid var(--border-strong);border-radius:14px;background:var(--surface);color:var(--text);text-align:center;width:100%}
+input:focus{outline:none;border-color:var(--primary);box-shadow:var(--ring)}
+button{font:inherit;font-weight:650;font-size:1.02rem;min-height:52px;border:0;border-radius:12px;background:var(--primary);color:var(--on);cursor:pointer;box-shadow:0 1px 2px rgba(16,33,60,.2),0 6px 14px color-mix(in srgb,var(--primary) 30%,transparent)}
+button:disabled{opacity:.5;box-shadow:none}
+.err{color:var(--bad);font-weight:600;min-height:1.4em;font-size:.92rem}
 </style>
 </head>
 <body>
 <form id="f">
-<div class="icon" aria-hidden="true">🔒</div>
-<h1>Ricci Garage</h1>
+<svg class="logo" width="56" height="56" viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2f6bb8"/><stop offset="1" stop-color="#14335f"/></linearGradient></defs><rect width="40" height="40" rx="11" fill="url(#g)"/><g transform="translate(8 8)" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path transform="translate(-.5 -.5)" d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></g></svg>
+<h1>Mitch depann</h1>
 <p>Saisissez le code pour accéder à l'application.</p>
 <input id="c" type="password" autocomplete="current-password" placeholder="Code d'accès" aria-label="Code d'accès" autofocus>
 <div class="err" id="e" role="alert"></div>

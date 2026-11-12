@@ -44,7 +44,7 @@ function Status() {
   }
 
   return (
-    <>
+    <div className="panel">
       <h3>Envoi des emails</h3>
       {st === null && <p className="muted">Chargement…</p>}
       {st === 'offline' && <p className="muted">Indisponible hors connexion.</p>}
@@ -64,7 +64,7 @@ function Status() {
           {test && <p role="status">{test}</p>}
         </>
       )}
-    </>
+    </div>
   )
 }
 
@@ -100,7 +100,7 @@ function GoogleStatus({ localCalendarId }: { localCalendarId: string }) {
   }
 
   return (
-    <>
+    <div className="panel">
       <h3>Google Agenda (sens unique : application → Google)</h3>
       {st === null && <p className="muted">Chargement…</p>}
       {st === 'offline' && <p className="muted">Indisponible hors connexion.</p>}
@@ -129,7 +129,7 @@ function GoogleStatus({ localCalendarId }: { localCalendarId: string }) {
           </div>
         </>
       )}
-    </>
+    </div>
   )
 }
 
@@ -173,6 +173,7 @@ function Form({ initial }: { initial: Settings }) {
 
   return (
     <form className="form" onSubmit={submit} noValidate>
+      <div className="panel">
       <h3>Coordonnées du garage (affichées dans les emails)</h3>
       <Field label="Nom *" error={errors.garageNom}><input value={f.garageNom} onChange={text('garageNom')} /></Field>
       <Field label="Adresse"><input value={f.garageAdresse} onChange={text('garageAdresse')} autoComplete="street-address" /></Field>
@@ -180,6 +181,9 @@ function Form({ initial }: { initial: Settings }) {
       <Field label="Email de contact" error={errors.garageEmail} hint="Les clients qui répondent à un rappel écrivent à cette adresse"><input type="email" value={f.garageEmail} onChange={text('garageEmail')} /></Field>
       <Field label="Mention en bas des emails"><textarea rows={2} value={f.signature} onChange={text('signature')} /></Field>
 
+      </div>
+
+      <div className="panel">
       <h3>Rappels par email</h3>
       {check('rappelsClientActifs', 'Envoyer des rappels aux clients (rendez-vous, échéances) — uniquement ceux qui ont un email')}
       {check('rappelsRdvPereActifs', 'Recevoir aussi les rappels de rendez-vous')}
@@ -192,10 +196,14 @@ function Form({ initial }: { initial: Settings }) {
       </Field>
       <Field label="Rappels de rendez-vous : combien d'heures avant ?" error={errors.rdvH} hint="Par défaut 24, 1 (la veille et 1 h avant)"><input value={f.rdvH} onChange={text('rdvH')} inputMode="decimal" /></Field>
       <Field label="Rappels d'échéance : combien de jours avant ?" error={errors.echJ} hint="Par défaut 30, 7 ; 0 = le jour même"><input value={f.echJ} onChange={text('echJ')} inputMode="numeric" /></Field>
+      </div>
+
+      <div className="panel">
       <h3>Google Agenda</h3>
       <Field label="Identifiant de l'agenda Google" hint="Google Agenda → Paramètres de l'agenda → Intégrer l'agenda → ID de l'agenda (souvent l'adresse Gmail). Vide = désactivé">
         <input value={f.googleCalendarId} onChange={text('googleCalendarId')} autoCapitalize="none" />
       </Field>
+      </div>
       <button className="btn primary big" type="submit">Enregistrer les réglages</button>
       {saved && <p className="ok-msg" role="status">✓ Enregistré (appliqué à tous les appareils après synchronisation)</p>}
     </form>
@@ -211,8 +219,10 @@ export function ReminderSettings() {
       <h2>Garage et rappels</h2>
       {/* Pas de `key` sur updatedAt : le formulaire ne doit pas se recréer (et perdre son message « Enregistré ») à chaque sauvegarde. */}
       <Form initial={s} />
-      <Status />
-      <GoogleStatus localCalendarId={s.googleCalendarId} />
+      <div className="form" style={{ marginTop: 14 }}>
+        <Status />
+        <GoogleStatus localCalendarId={s.googleCalendarId} />
+      </div>
     </>
   )
 }

@@ -5,6 +5,7 @@ import type { Client, Vehicle } from '../../shared/types'
 import { db } from '../db'
 import { exportAll, importAll } from '../backup'
 import { ReminderSettings } from '../components/ReminderSettings'
+import { Icon } from '../components/Icon'
 import { logout, syncNow, useSyncState } from '../sync'
 
 const LABEL = { idle: 'À jour', syncing: 'Synchronisation…', offline: 'Hors connexion', unauthorized: 'Connexion requise', error: 'Erreur' } as const
@@ -52,27 +53,30 @@ export function SettingsPage() {
     <>
       <h1>Réglages</h1>
       <h2>Synchronisation</h2>
-      <p>
-        État : <strong>{LABEL[sync.status]}</strong>
-        {sync.lastSync && <span className="muted"> · dernière à {new Date(sync.lastSync).toLocaleTimeString('fr-FR')}</span>}
-      </p>
-      <div className="actions">
-        <button className="btn" onClick={() => void syncNow()}>Synchroniser maintenant</button>
-        {sync.status === 'unauthorized' ? <Link className="btn primary" to="/connexion">Se connecter</Link> : <button className="btn" onClick={() => void logout()}>Se déconnecter</button>}
+      <div className="panel">
+        <p style={{ margin: 0 }}>
+          État : <strong>{LABEL[sync.status]}</strong>
+          {sync.lastSync && <span className="muted"> · dernière à {new Date(sync.lastSync).toLocaleTimeString('fr-FR')}</span>}
+        </p>
+        <div className="actions" style={{ margin: 0 }}>
+          <button className="btn" onClick={() => void syncNow()}><Icon name="refresh" size={18} /> Synchroniser maintenant</button>
+          {sync.status === 'unauthorized' ? <Link className="btn primary" to="/connexion">Se connecter</Link> : <button className="btn" onClick={() => void logout()}><Icon name="lock" size={18} /> Se déconnecter</button>}
+        </div>
       </div>
 
       <ReminderSettings />
 
       <h2>Données</h2>
-      <p>{counts.clients} client(s) · {counts.vehicles} véhicule(s) · {counts.interventions} intervention(s) · <Link to="/corbeille">corbeille ({counts.trash})</Link></p>
-      <div className="actions">
-        <button className="btn" onClick={() => void doExport()}>⬇️ Exporter une sauvegarde</button>
-        <button className="btn" onClick={() => fileRef.current?.click()}>⬆️ Importer une sauvegarde</button>
-        <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => e.target.files?.[0] && void doImport(e.target.files[0])} />
+      <div className="panel">
+        <p style={{ margin: 0 }}>{counts.clients} client(s) · {counts.vehicles} véhicule(s) · {counts.interventions} intervention(s) · <Link to="/corbeille">corbeille ({counts.trash})</Link></p>
+        <div className="actions" style={{ margin: 0 }}>
+          <button className="btn" onClick={() => void doExport()}><Icon name="download" size={18} /> Exporter une sauvegarde</button>
+          <button className="btn" onClick={() => fileRef.current?.click()}><Icon name="upload" size={18} /> Importer une sauvegarde</button>
+          <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => e.target.files?.[0] && void doImport(e.target.files[0])} />
+        </div>
+        {msg && <p role="status" style={{ margin: 0 }}>{msg}</p>}
+        <p className="muted" style={{ margin: 0 }}>La sauvegarde JSON ne contient pas les photos (elles sont conservées sur le serveur). Les données sont enregistrées sur cet appareil puis synchronisées ; le serveur conserve en plus un historique de restauration.</p>
       </div>
-      {msg && <p role="status">{msg}</p>}
-      <p className="muted">La sauvegarde JSON ne contient pas les photos (elles sont conservées sur le serveur).</p>
-      <p className="muted">Les données sont enregistrées sur cet appareil puis synchronisées. Le serveur conserve en plus un historique de restauration.</p>
     </>
   )
 }

@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { RDV_STATUTS, type RdvStatut, type RendezVous } from '../../shared/types'
+import { Icon } from '../components/Icon'
 import { ClientPicker, Field, StaleBanner, fmtDateTime } from '../components/ui'
 import { db, type Row } from '../db'
 import { findRdvConflicts, fullName, saveRdv, setRdvArchived, type RdvInput } from '../repo'
@@ -115,6 +116,8 @@ function RdvForm({ existing }: { existing?: Row<RendezVous> }) {
       {guard.stale && <StaleBanner onReload={guard.reloadNow} onKeep={guard.keepMine} />}
       {existing?.interventionId && <p><Link to={`/interventions/${existing.interventionId}`}>→ Voir l'intervention liée</Link></p>}
       <form onSubmit={submit} noValidate className="form">
+        <div className="panel">
+        <h3><Icon name="users" size={18} /> Client et véhicule</h3>
         <ClientPicker value={f.clientId} onChange={(id) => setF((p) => ({ ...p, clientId: id, vehicleId: '' }))} error={errors.clientId} />
         {f.clientId && (
           <Field label="Véhicule (facultatif)">
@@ -124,6 +127,10 @@ function RdvForm({ existing }: { existing?: Row<RendezVous> }) {
             </select>
           </Field>
         )}
+        </div>
+
+        <div className="panel">
+        <h3><Icon name="calendar" size={18} /> Date et durée</h3>
         <Field label="Date et heure *" error={errors.startAt}>
           <input type="datetime-local" value={f.startAt} onChange={(e) => patch('startAt', e.target.value)} />
         </Field>
@@ -140,6 +147,10 @@ function RdvForm({ existing }: { existing?: Row<RendezVous> }) {
             </ul>
           </div>
         )}
+        </div>
+
+        <div className="panel">
+        <h3><Icon name="file" size={18} /> Détails</h3>
         <Field label="Motif">
           <input value={f.motif} onChange={(e) => patch('motif', e.target.value)} placeholder="Ex. Vidange, bruit au freinage…" />
         </Field>
@@ -151,6 +162,7 @@ function RdvForm({ existing }: { existing?: Row<RendezVous> }) {
         <Field label="Notes">
           <textarea rows={2} value={f.notes} onChange={(e) => patch('notes', e.target.value)} />
         </Field>
+        </div>
         <button className="btn primary big" type="submit">Enregistrer</button>
       </form>
       {existing && !existing.interventionId && (

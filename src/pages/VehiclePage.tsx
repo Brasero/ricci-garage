@@ -8,7 +8,9 @@ import { computeTotals, formatEuros } from '../../shared/money'
 import { echeanceName } from './AgendaPage'
 import { fmtDateTime, StatusBadge } from '../components/ui'
 import { fullName, findVehiclesByPlate, saveVehicle, setVehicleArchived, type VehicleInput } from '../repo'
-import { ClientPicker, Field, PlateBadge, StaleBanner } from '../components/ui'
+import { FicheButton } from '../components/FicheButton'
+import { Icon } from '../components/Icon'
+import { ClientPicker, DateBox, EmptyState, Field, PlateBadge, StaleBanner } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { useGoBack } from '../useGoBack'
 import { useStaleGuard } from '../useStaleGuard'
@@ -105,15 +107,18 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
     nav('/vehicules', { replace: true })
   }
 
-  return (
-    <>
-      <h1>{existing ? `${existing.marque} ${existing.modele}` : 'Nouveau véhicule'}</h1>
-      {existing && <PlateBadge vehicle={existing} />}
-      {guard.stale && <StaleBanner onReload={guard.reloadNow} onKeep={guard.keepMine} />}
-      <form onSubmit={submit} noValidate className="form">
-        <ClientPicker value={f.clientId} onChange={(cid) => patch('clientId', cid)} error={errors.clientId} />
-        {f.clientId && <Link className="link" to={`/clients/${f.clientId}`}>Voir la fiche du propriétaire</Link>}
+  const owner = existing ? clients.find((c) => c.id === existing.clientId) : undefined
 
+  const form = (
+    <form onSubmit={submit} noValidate className="form">
+      <div className="panel">
+        <h3><Icon name="users" size={18} /> Propriétaire</h3>
+        <ClientPicker value={f.clientId} onChange={(cid) => patch('clientId', cid)} error={errors.clientId} />
+        {f.clientId && <Link className="link" to={`/clients/${f.clientId}`}>Voir la fiche du propriétaire <Icon name="chevron-right" size={14} /></Link>}
+      </div>
+
+      <div className="panel">
+        <h3><Icon name="car" size={18} /> Immatriculation</h3>
         <fieldset className="field">
           <legend className="field-label">Pays de la plaque *</legend>
           <div className="segmented">
@@ -127,7 +132,10 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
         <Field label="Immatriculation *" error={errors.plate} hint={f.country === 'LU' ? 'Ex. AB 1234' : 'Ex. AB-123-CD'}>
           <input className="plate-input" value={f.plate} onChange={text('plate')} autoCapitalize="characters" autoComplete="off" />
         </Field>
+      </div>
 
+      <div className="panel">
+        <h3><Icon name="wrench" size={18} /> Véhicule</h3>
         <Field label="Marque *" error={errors.marque}>
           <input list="brands" value={f.marque} onChange={text('marque')} />
           <datalist id="brands">{BRANDS.map((b) => <option key={b} value={b} />)}</datalist>
@@ -146,6 +154,10 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
         <Field label="Couleur">
           <input value={f.couleur} onChange={text('couleur')} />
         </Field>
+      </div>
+
+      <div className="panel">
+        <h3><Icon name="clock" size={18} /> Suivi</h3>
         <Field label="1ʳᵉ mise en circulation">
           <input type="date" value={f.miseEnCirculation} onChange={text('miseEnCirculation')} />
         </Field>
@@ -161,62 +173,108 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
         <Field label="Notes">
           <textarea rows={3} value={f.notes} onChange={text('notes')} />
         </Field>
+      </div>
 
-        {dupes.length > 0 && (
-          <div className="warning" role="alert">
-            <strong>Cette plaque existe déjà :</strong>
-            <ul>
-              {dupes.map((d) => (
-                <li key={d.id}>
-                  <Link to={`/vehicules/${d.id}`}>{d.marque} {d.modele}</Link> · {nameOf(d.clientId)}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <button className="btn primary big" type="submit">{dupes.length > 0 ? 'Enregistrer quand même' : 'Enregistrer'}</button>
-      </form>
+      {dupes.length > 0 && (
+        <div className="warning" role="alert">
+          <strong>Cette plaque existe déjà :</strong>
+          <ul>
+            {dupes.map((d) => (
+              <li key={d.id}>
+                <Link to={`/vehicules/${d.id}`}>{d.marque} {d.modele}</Link> · {nameOf(d.clientId)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <button className="btn primary big" type="submit">{dupes.length > 0 ? 'Enregistrer quand même' : 'Enregistrer'}</button>
+    </form>
+  )
 
-      {existing && (
-        <>
-          <div className="page-head">
-            <h2>Échéances ({echeances.length})</h2>
-            <Link className="btn" to={`/echeances/nouveau?vehicule=${existing.id}`}>+ Échéance</Link>
-          </div>
-          {echeances.map((e) => (
-            <Link key={e.id} to={`/echeances/${e.id}`} className="card clickable">
-              <div className="card-main">
-                <strong>{echeanceName(e)}</strong>
-                <span className="muted">{[e.dateDue ? new Date(`${e.dateDue}T12:00:00`).toLocaleDateString('fr-FR') : '', e.kmDue != null ? `${e.kmDue.toLocaleString('fr-FR')} km` : ''].filter(Boolean).join(' · ')}</span>
-              </div>
-              {e.statut === 'faite' ? <span className="status terminee">Faite</span> : <span className="status en_cours">À faire</span>}
-            </Link>
+  if (!existing) {
+    return (
+      <>
+        <h1>Nouveau véhicule</h1>
+        {form}
+      </>
+    )
+  }
+
+  const motor = MOTORISATIONS.find((m) => m[0] === existing.motorisation)?.[1]
+  const facts: [string, string][] = (
+    [
+      ['Kilométrage', existing.km != null ? `${existing.km.toLocaleString('fr-FR')} km` : ''],
+      ['Motorisation', [motor, existing.motorisationDetail].filter(Boolean).join(' · ')],
+      ['Dernier CT', existing.dernierCT ? new Date(`${existing.dernierCT}T12:00:00`).toLocaleDateString('fr-FR') : ''],
+      ['Mise en circulation', existing.miseEnCirculation ? new Date(`${existing.miseEnCirculation}T12:00:00`).toLocaleDateString('fr-FR') : ''],
+      ['Couleur', existing.couleur],
+      ['N° de châssis', existing.vin],
+    ] as [string, string][]
+  ).filter(([, v]) => v.trim())
+
+  return (
+    <>
+      <div className="hero">
+        <div className="hero-main">
+          <PlateBadge vehicle={existing} large />
+          <h1>{existing.marque} {existing.modele}</h1>
+          <span className="sub">
+            {owner ? <Link to={`/clients/${owner.id}`}>{fullName(owner)}</Link> : '—'}
+          </span>
+        </div>
+      </div>
+      <div className="actions fill">
+        <Link className="btn primary" to={`/interventions/nouveau?vehicule=${existing.id}`}><Icon name="wrench" size={18} /> Nouvelle intervention</Link>
+        <FicheButton vehicle={existing} owner={owner} />
+      </div>
+      {guard.stale && <StaleBanner onReload={guard.reloadNow} onKeep={guard.keepMine} />}
+      {facts.length > 0 && (
+        <div className="facts">
+          {facts.map(([label, value]) => (
+            <div className="fact" key={label}><span>{label}</span><b>{value}</b></div>
           ))}
-          {echeances.length === 0 && <p className="empty">Aucune échéance (contrôle technique, vidange…).</p>}
-        </>
+        </div>
       )}
-      {existing && (
-        <>
-          <div className="page-head">
-            <h2>Historique ({history.length})</h2>
-            <Link className="btn primary" to={`/interventions/nouveau?vehicule=${existing.id}`}>+ Nouvelle intervention</Link>
+
+      <div className="section-head">
+        <h2>Historique<span className="count">{history.length}</span></h2>
+        <Link className="btn soft" to={`/interventions/nouveau?vehicule=${existing.id}`}>+ Nouvelle intervention</Link>
+      </div>
+      {history.map((i) => (
+        <Link key={i.id} to={`/interventions/${i.id}`} className="card clickable">
+          <DateBox ms={i.startAt} />
+          <div className="card-main">
+            <strong>{i.description || 'Intervention sans description'}</strong>
+            <span className="muted">{i.km != null ? `${i.km.toLocaleString('fr-FR')} km` : fmtDateTime(i.startAt)}</span>
           </div>
-          {history.map((i) => (
-            <Link key={i.id} to={`/interventions/${i.id}`} className="card clickable">
-              <div className="card-main">
-                <strong>{fmtDateTime(i.startAt)}{i.km != null ? ` · ${i.km.toLocaleString('fr-FR')} km` : ''}</strong>
-                <span className="muted">{i.description || 'Sans description'}</span>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <StatusBadge statut={i.statut} />
-                <div>{formatEuros(computeTotals(i.pieces, i.mainOeuvreCts).totalCts)}</div>
-              </div>
-            </Link>
-          ))}
-          {history.length === 0 && <p className="empty">Aucune intervention pour ce véhicule.</p>}
-        </>
-      )}
-      {existing && existing.ownerHistory.length > 0 && (
+          <div className="side">
+            <StatusBadge statut={i.statut} />
+            <span>{formatEuros(computeTotals(i.pieces, i.mainOeuvreCts).totalCts)}</span>
+          </div>
+        </Link>
+      ))}
+      {history.length === 0 && <EmptyState icon="wrench">Aucune intervention pour ce véhicule.</EmptyState>}
+
+      <div className="section-head">
+        <h2>Échéances<span className="count">{echeances.length}</span></h2>
+        <Link className="btn soft" to={`/echeances/nouveau?vehicule=${existing.id}`}>+ Échéance</Link>
+      </div>
+      {echeances.map((e) => (
+        <Link key={e.id} to={`/echeances/${e.id}`} className="card clickable">
+          <span className="avatar av-2" aria-hidden><Icon name="clock" size={20} /></span>
+          <div className="card-main">
+            <strong>{echeanceName(e)}</strong>
+            <span className="muted">{[e.dateDue ? new Date(`${e.dateDue}T12:00:00`).toLocaleDateString('fr-FR') : '', e.kmDue != null ? `${e.kmDue.toLocaleString('fr-FR')} km` : ''].filter(Boolean).join(' · ')}</span>
+          </div>
+          {e.statut === 'faite' ? <span className="status terminee">Faite</span> : <span className="status en_cours">À faire</span>}
+        </Link>
+      ))}
+      {echeances.length === 0 && <EmptyState icon="clock">Aucune échéance (contrôle technique, vidange…).</EmptyState>}
+
+      <h2>Modifier la fiche</h2>
+      {form}
+
+      {existing.ownerHistory.length > 0 && (
         <>
           <h2>Anciens propriétaires</h2>
           <ul className="plain">
@@ -226,7 +284,7 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
           </ul>
         </>
       )}
-      {existing && <button className="btn danger" type="button" onClick={toggleArchive}>Archiver ce véhicule</button>}
+      <button className="btn danger" type="button" onClick={toggleArchive}>Archiver ce véhicule</button>
     </>
   )
 }

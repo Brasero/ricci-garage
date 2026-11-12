@@ -2,6 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useRef, useState } from 'react'
 import { db, type PhotoRow } from '../db'
 import { compressImage } from '../image'
+import { Icon } from './Icon'
+import { EmptyState } from './ui'
 import { addPhoto, deletePhoto } from '../repo'
 import { useSyncState } from '../sync'
 
@@ -88,10 +90,10 @@ export function PhotoGallery({ interventionId }: { interventionId: string }) {
 
   return (
     <>
-      <div className="page-head">
-        <h2>Photos ({photos.length})</h2>
-        <button type="button" className="btn" disabled={busy} onClick={() => input.current?.click()}>
-          📷 {busy ? 'Traitement…' : 'Ajouter'}
+      <div className="section-head" style={{ marginTop: 0 }}>
+        <span className="muted">{photos.length} photo{photos.length > 1 ? 's' : ''}</span>
+        <button type="button" className="btn soft" disabled={busy} onClick={() => input.current?.click()}>
+          <Icon name="camera" size={18} /> {busy ? 'Traitement…' : 'Ajouter'}
         </button>
         <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => void onFiles(e.target.files)} />
       </div>
@@ -101,7 +103,7 @@ export function PhotoGallery({ interventionId }: { interventionId: string }) {
           <Thumb key={p.id} photo={p} onOpen={(url) => setBig({ url, id: p.id })} />
         ))}
       </div>
-      {photos.length === 0 && <p className="empty">Aucune photo.</p>}
+      {photos.length === 0 && <EmptyState icon="camera">Aucune photo pour cette intervention.</EmptyState>}
       {big && (
         <div className="lightbox" role="dialog" aria-modal="true" onClick={() => setBig(null)}>
           <img src={big.url} alt="Photo agrandie" />

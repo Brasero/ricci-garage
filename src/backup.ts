@@ -22,7 +22,7 @@ function checkBase(r: unknown, what: string): asserts r is { id: string; updated
 export async function importAll(file: unknown): Promise<number> {
   const f = file as { format?: string; version?: number; clients?: unknown; vehicles?: unknown; interventions?: unknown; rdvs?: unknown; echeances?: unknown; settings?: unknown }
   if (!f || f.format !== FORMAT || f.version !== 1 || !Array.isArray(f.clients) || !Array.isArray(f.vehicles)) {
-    throw new Error("ce n'est pas une sauvegarde Ricci Garage")
+    throw new Error("ce n'est pas une sauvegarde Mitch depann")
   }
   for (const c of f.clients) {
     checkBase(c, 'client')

@@ -4,7 +4,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { validateEmail, validatePhone } from '../../shared/phone'
 import { db, type Row } from '../db'
 import { archiveClient, findDuplicateClients, fullName, saveClient, type ClientInput } from '../repo'
-import { Field, StaleBanner, VehicleCard } from '../components/ui'
+import { Icon } from '../components/Icon'
+import { Avatar, EmptyState, Field, StaleBanner, VehicleCard } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { useGoBack } from '../useGoBack'
 import { useStaleGuard } from '../useStaleGuard'
@@ -85,17 +86,10 @@ function ClientForm({ existing }: { existing?: Row<Client> }) {
     nav('/clients', { replace: true })
   }
 
-  return (
-    <>
-      <h1>{existing ? fullName(existing) : 'Nouveau client'}</h1>
-      {existing && (
-        <div className="actions">
-          <a className="btn" href={`tel:${existing.telephone}`}>📞 Appeler</a>
-          {existing.email && <a className="btn" href={`mailto:${existing.email}`}>✉️ Écrire</a>}
-        </div>
-      )}
-      {guard.stale && <StaleBanner onReload={guard.reloadNow} onKeep={guard.keepMine} />}
-      <form onSubmit={submit} noValidate className="form">
+  const form = (
+    <form onSubmit={submit} noValidate className="form">
+      <div className="panel">
+        <h3><Icon name="users" size={18} /> Informations</h3>
         <Field label="Nom *" error={errors.nom}>
           <input value={f.nom} onChange={set('nom')} autoComplete="family-name" autoFocus={!existing} />
         </Field>
@@ -117,37 +111,62 @@ function ClientForm({ existing }: { existing?: Row<Client> }) {
         <Field label="Notes">
           <textarea rows={3} value={f.notes} onChange={set('notes')} />
         </Field>
+      </div>
 
-        {dupes.length > 0 && (
-          <div className="warning" role="alert">
-            <strong>Ce client existe peut-être déjà :</strong>
-            <ul>
-              {dupes.map((d) => (
-                <li key={d.id}>
-                  <Link to={`/clients/${d.id}`}>{fullName(d)}</Link> · {d.telephone}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <button className="btn primary big" type="submit">
-          {dupes.length > 0 ? 'Enregistrer quand même' : 'Enregistrer'}
-        </button>
-      </form>
-
-      {existing && (
-        <>
-          <div className="page-head">
-            <h2>Véhicules ({vehicles.length})</h2>
-            <Link className="btn" to={`/vehicules/nouveau?client=${existing.id}`}>+ Ajouter un véhicule</Link>
-          </div>
-          {vehicles.map((v) => (
-            <VehicleCard key={v.id} vehicle={v} owner={existing} onClick={() => nav(`/vehicules/${v.id}`)} />
-          ))}
-          {vehicles.length === 0 && <p className="empty">Aucun véhicule pour ce client.</p>}
-          <button className="btn danger" type="button" onClick={archive}>Archiver ce client</button>
-        </>
+      {dupes.length > 0 && (
+        <div className="warning" role="alert">
+          <strong>Ce client existe peut-être déjà :</strong>
+          <ul>
+            {dupes.map((d) => (
+              <li key={d.id}>
+                <Link to={`/clients/${d.id}`}>{fullName(d)}</Link> · {d.telephone}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
+      <button className="btn primary big" type="submit">
+        {dupes.length > 0 ? 'Enregistrer quand même' : 'Enregistrer'}
+      </button>
+    </form>
+  )
+
+  if (!existing) {
+    return (
+      <>
+        <h1>Nouveau client</h1>
+        {form}
+      </>
+    )
+  }
+
+  return (
+    <>
+      <div className="hero">
+        <Avatar name={fullName(existing)} large />
+        <div className="hero-main">
+          <h1>{fullName(existing)}</h1>
+          <span className="sub">{existing.telephone}{existing.email ? ` · ${existing.email}` : ''}</span>
+        </div>
+      </div>
+      <div className="actions fill">
+        <a className="btn primary" href={`tel:${existing.telephone}`}><Icon name="phone" size={18} /> Appeler</a>
+        {existing.email && <a className="btn" href={`mailto:${existing.email}`}><Icon name="mail" size={18} /> Écrire</a>}
+      </div>
+      {guard.stale && <StaleBanner onReload={guard.reloadNow} onKeep={guard.keepMine} />}
+
+      <div className="section-head">
+        <h2>Véhicules<span className="count">{vehicles.length}</span></h2>
+        <Link className="btn soft" to={`/vehicules/nouveau?client=${existing.id}`}>+ Ajouter un véhicule</Link>
+      </div>
+      {vehicles.map((v) => (
+        <VehicleCard key={v.id} vehicle={v} owner={existing} onClick={() => nav(`/vehicules/${v.id}`)} />
+      ))}
+      {vehicles.length === 0 && <EmptyState icon="car">Aucun véhicule pour ce client.</EmptyState>}
+
+      <h2>Modifier la fiche</h2>
+      {form}
+      <button className="btn danger" type="button" onClick={archive}>Archiver ce client</button>
     </>
   )
 }
