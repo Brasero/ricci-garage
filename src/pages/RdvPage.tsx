@@ -5,6 +5,8 @@ import { RDV_STATUTS, type RdvStatut, type RendezVous } from '../../shared/types
 import { ClientPicker, Field, StaleBanner, fmtDateTime } from '../components/ui'
 import { db, type Row } from '../db'
 import { findRdvConflicts, fullName, saveRdv, setRdvArchived, type RdvInput } from '../repo'
+import { useToast } from '../components/Toast'
+import { useGoBack } from '../useGoBack'
 import { useStaleGuard } from '../useStaleGuard'
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -50,10 +52,11 @@ export function RdvPage() {
 
 function RdvForm({ existing }: { existing?: Row<RendezVous> }) {
   const nav = useNavigate()
+  const goBack = useGoBack('/agenda')
+  const toast = useToast()
   const [params] = useSearchParams()
   const [f, setF] = useState<FormState>(() => toForm(existing, params))
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [saved, setSaved] = useState(false)
   const [conflicts, setConflicts] = useState<Row<RendezVous>[]>([])
   const guard = useStaleGuard(existing, (r) => {
     setF(toForm(r, new URLSearchParams()))
@@ -65,7 +68,6 @@ function RdvForm({ existing }: { existing?: Row<RendezVous> }) {
   const patch = <K extends keyof FormState>(k: K, v: FormState[K]) => {
     setF((p) => ({ ...p, [k]: v }))
     guard.markTouched()
-    setSaved(false)
   }
 
   // Avertissement de chevauchement en direct (jamais bloquant).
@@ -90,10 +92,9 @@ function RdvForm({ existing }: { existing?: Row<RendezVous> }) {
     if (Object.keys(errs).length) return
     const input: RdvInput = { clientId: f.clientId, vehicleId: f.vehicleId || null, startAt: startMs, dureeMin, motif: f.motif, statut: f.statut, notes: f.notes }
     const id = await saveRdv(input, existing)
-    if (existing) {
-      guard.saved((await db.rdvs.get(id))!.updatedAt)
-      setSaved(true)
-    } else nav(`/rendez-vous/${id}`, { replace: true })
+    if (existing) guard.saved((await db.rdvs.get(id))!.updatedAt)
+    toast('Rendez-vous enregistré')
+    goBack() // toujours la page précédente
   }
 
   async function archive() {
@@ -151,7 +152,6 @@ function RdvForm({ existing }: { existing?: Row<RendezVous> }) {
           <textarea rows={2} value={f.notes} onChange={(e) => patch('notes', e.target.value)} />
         </Field>
         <button className="btn primary big" type="submit">Enregistrer</button>
-        {saved && <p className="ok-msg" role="status">✓ Enregistré</p>}
       </form>
       {existing && !existing.interventionId && (
         <button className="btn big" type="button" onClick={toIntervention}>🔧 Créer l'intervention</button>

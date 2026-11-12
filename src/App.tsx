@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { LockScreen } from './components/LockScreen'
+import { ToastProvider } from './components/Toast'
 import { useLock } from './lock'
 import { AgendaPage } from './pages/AgendaPage'
 import { ClientPage } from './pages/ClientPage'
@@ -21,6 +22,7 @@ export function App() {
   if (useLock()) return <LockScreen />
   return (
     <BrowserRouter>
+      <ToastProvider>
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<HomePage />} />
@@ -44,6 +46,7 @@ export function App() {
           <Route path="*" element={<p className="empty">Page introuvable.</p>} />
         </Route>
       </Routes>
+      </ToastProvider>
     </BrowserRouter>
   )
 }

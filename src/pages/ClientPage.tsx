@@ -5,6 +5,8 @@ import { validateEmail, validatePhone } from '../../shared/phone'
 import { db, type Row } from '../db'
 import { archiveClient, findDuplicateClients, fullName, saveClient, type ClientInput } from '../repo'
 import { Field, StaleBanner, VehicleCard } from '../components/ui'
+import { useToast } from '../components/Toast'
+import { useGoBack } from '../useGoBack'
 import { useStaleGuard } from '../useStaleGuard'
 import type { Client } from '../../shared/types'
 
@@ -28,6 +30,8 @@ const toForm = (c?: Client): ClientInput => ({
 
 function ClientForm({ existing }: { existing?: Row<Client> }) {
   const nav = useNavigate()
+  const goBack = useGoBack('/clients')
+  const toast = useToast()
   const [f, setF] = useState<ClientInput>(() => toForm(existing))
   const guard = useStaleGuard(existing, (c) => {
     setF(toForm(c))
@@ -36,7 +40,6 @@ function ClientForm({ existing }: { existing?: Row<Client> }) {
   })
   const [errors, setErrors] = useState<Partial<Record<keyof ClientInput, string>>>({})
   const [dupes, setDupes] = useState<Row<Client>[]>([])
-  const [saved, setSaved] = useState(false)
   const vehicles = useLiveQuery(
     () => (existing ? db.vehicles.where('clientId').equals(existing.id).filter((v) => !v.deletedAt).toArray() : []),
     [existing?.id],
@@ -46,7 +49,6 @@ function ClientForm({ existing }: { existing?: Row<Client> }) {
     setF((p) => ({ ...p, [k]: e.target.value }))
     guard.markTouched()
     setDupes([])
-    setSaved(false)
   }
 
   async function submit(e: FormEvent) {
@@ -67,11 +69,9 @@ function ClientForm({ existing }: { existing?: Row<Client> }) {
       }
     }
     const id = await saveClient(f, existing)
-    if (existing) {
-      guard.saved((await db.clients.get(id))!.updatedAt)
-      setSaved(true)
-    }
-    else nav(`/clients/${id}`, { replace: true })
+    if (existing) guard.saved((await db.clients.get(id))!.updatedAt)
+    toast('Client enregistré')
+    goBack() // toujours la page précédente
   }
 
   async function archive() {
@@ -110,7 +110,7 @@ function ClientForm({ existing }: { existing?: Row<Client> }) {
         </Field>
         {f.email.trim() && (
           <label className="check">
-            <input type="checkbox" checked={f.rappelsEmail !== false} onChange={(e) => { setF((p) => ({ ...p, rappelsEmail: e.target.checked })); guard.markTouched(); setSaved(false) }} />
+            <input type="checkbox" checked={f.rappelsEmail !== false} onChange={(e) => { setF((p) => ({ ...p, rappelsEmail: e.target.checked })); guard.markTouched() }} />
             Envoyer des rappels par email à ce client (rendez-vous, contrôle technique, vidange…)
           </label>
         )}
@@ -133,7 +133,6 @@ function ClientForm({ existing }: { existing?: Row<Client> }) {
         <button className="btn primary big" type="submit">
           {dupes.length > 0 ? 'Enregistrer quand même' : 'Enregistrer'}
         </button>
-        {saved && <p className="ok-msg" role="status">✓ Enregistré</p>}
       </form>
 
       {existing && (

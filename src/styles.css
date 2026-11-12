@@ -139,3 +139,10 @@ h2.today { color: var(--primary); }
 .check { display: flex; gap: 10px; align-items: flex-start; font-size: .95rem; }
 .check input { width: 22px; height: 22px; margin-top: 2px; flex: none; }
 .banner { display: block; text-decoration: none; font-weight: 600; margin-bottom: 10px; }
+
+.toasts { position: fixed; left: 0; right: 0; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 60; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0 16px; pointer-events: none; }
+.toast { pointer-events: auto; font: inherit; font-weight: 600; max-width: 520px; padding: 12px 18px; border: 0; border-radius: 999px; background: var(--text); color: var(--bg); box-shadow: 0 6px 20px rgba(0,0,0,.25); cursor: pointer; animation: toast-in .2s ease-out; }
+.toast span { color: #4cc38a; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+@media (min-width: 900px) { .toasts { bottom: 24px; } }
