@@ -318,7 +318,8 @@ p { margin: 0 0 0.6rem; }
 .segmented button { min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.15; padding: 6px 8px; }
 .segmented.scroll { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(max-content, 1fr); overflow-x: auto; scrollbar-width: none; }
 .segmented.scroll::-webkit-scrollbar { display: none; }
-.segmented.scroll button { white-space: nowrap; padding: 0 16px; }
+.segmented.scroll button { white-space: nowrap; padding: 0 8px; font-size: 0.86rem; }
+@media (max-width: 359px) { .segmented.scroll button { font-size: 0.8rem; padding: 0 6px; } }
 
 .search-wrap { position: relative; margin-bottom: 14px; }
 .search-wrap .icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
