@@ -8,6 +8,7 @@ import { computeTotals, formatEuros } from '../../shared/money'
 import { echeanceName } from './AgendaPage'
 import { fmtDateTime, StatusBadge } from '../components/ui'
 import { fullName, findVehiclesByPlate, saveVehicle, setVehicleArchived, type VehicleInput } from '../repo'
+import { FicheButton } from '../components/FicheButton'
 import { ClientPicker, Field, PlateBadge, StaleBanner } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { useGoBack } from '../useGoBack'
@@ -109,6 +110,7 @@ function VehicleForm({ existing }: { existing?: Row<Vehicle> }) {
     <>
       <h1>{existing ? `${existing.marque} ${existing.modele}` : 'Nouveau véhicule'}</h1>
       {existing && <PlateBadge vehicle={existing} />}
+      {existing && <FicheButton vehicle={existing} owner={clients.find((c) => c.id === existing.clientId)} />}
       {guard.stale && <StaleBanner onReload={guard.reloadNow} onKeep={guard.keepMine} />}
       <form onSubmit={submit} noValidate className="form">
         <ClientPicker value={f.clientId} onChange={(cid) => patch('clientId', cid)} error={errors.clientId} />
